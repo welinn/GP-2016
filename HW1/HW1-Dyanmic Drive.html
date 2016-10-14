@@ -31,7 +31,7 @@ body {
 
 var scene, camera, renderer, controls;
 var model, center, rotationCenter;
-var speed, angle, rot, mess;
+var engine, speed, angle, rot, mess;
 var clock, stop;
 var dashboardPin;
 
@@ -59,6 +59,7 @@ function init() {
 
   model = new THREE.Object3D();
   dashboardPin = new THREE.Object3D();
+  engine = 15;
   speed = 1;
   angle = 0.01;
   rot = 0;
@@ -88,23 +89,24 @@ function onWindowResize() {
 
 function onKeypress(event) {
 
-  if ((event.which === 37  || event.keyCode === 37) && angle <= Math.PI/4) {
+  if ((event.which === 37  || event.keyCode === 37) && angle <= Math.PI/3) {
     angle += 0.1;
   }
-  else if ((event.which === 39  || event.keyCode === 39) && angle >= -Math.PI/4) {
+  else if ((event.which === 39  || event.keyCode === 39) && angle >= -Math.PI/3) {
     angle -= 0.1;
   }
   else if (event.which === 38  || event.keyCode === 38) {  //up
-    speed += 0.5;
+    engine += 0.3;
   }
-  else if (event.which === 40  || event.keyCode === 40) {  //down
-    speed -= 0.5;
+  else if ((event.which === 40  || event.keyCode === 40) && force > 0.3) {  //down
+    engine -= 0.3;
   }
   else if(event.which === 32  || event.keyCode === 32){ //space
     if(clock.running) stop = true;
   }
   else if(event.which === 36  || event.keyCode === 36){ //Home
     clock.start();
+    engine = 15;
     speed = 1;
   }
 }
@@ -132,12 +134,10 @@ function run(){
 
 function computeF() {
   if (stop)
-    var force = 0;
-  else
-    var force = 20;  //引擎動力
+    engine = 0;
 
   var Cd = 0.44;
-  force += (speed * (-Cd)); //air drag
+  var force = engine + (speed * (-Cd)); //air drag
   return force;
 }
 
