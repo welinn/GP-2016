@@ -40,10 +40,10 @@ body {
 <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
 <script>
 
-var scene, camera, renderer, controls;
-var model, center, rotationCenter;
-var engine, speed, angle, rot, mess;
-var clock, stop;
+var camera, scene, renderer, controls;
+var model, brakeOn, power, rot, mass;
+var pos, vel, force;
+var clock;
 
 $('body').keydown(onKeypress);
 
@@ -55,28 +55,28 @@ function init() {
 
   camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 1000);
   camera.position.set(0, 200, 200);
+  scene.add(camera);
 
-  renderer = new THREE.WebGLRenderer();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setClearColor(0x888888);
-  document.body.appendChild(renderer.domElement);
-
-  controls = new THREE.OrbitControls(camera, renderer.domElement);
 
   var gridXZ = new THREE.GridHelper(100, 10);
   gridXZ.setColors(new THREE.Color(0xff0000), new THREE.Color(0xffffff));
   scene.add(gridXZ);
 
+  renderer = new THREE.WebGLRenderer();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x888888);
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+
   model = new THREE.Object3D();
-  dashboardPin = new THREE.Object3D();
-  engine = 15;
-  speed = 1;
-  angle = 0.01;
-  rot = 0;
-  mess = 1;
-  center = new THREE.Vector3(0, 0, 0);
-  stop = false;
+  pos = new THREE.Vector3();
+  vel = new THREE.Vector3();
+  force = new THREE.Vector3();
   clock = new THREE.Clock(false);
+  brakeOn = false;
+  power = 5;
+  rot = 0;
+  mass = 1;
 
   $.getJSON('model.json', function(data) {
     var loader = new THREE.ObjectLoader();
@@ -89,6 +89,7 @@ function init() {
   scene.add(model);
 
   window.addEventListener('resize', onWindowResize, false);
+  document.body.appendChild(renderer.domElement);
 }
 
 function onWindowResize() {
@@ -99,64 +100,58 @@ function onWindowResize() {
 
 function onKeypress(event) {
 
-  if ((event.which === 37  || event.keyCode === 37) && angle <= Math.PI/3) {
-    angle += 0.1;
-  }
-  else if ((event.which === 39  || event.keyCode === 39) && angle >= -Math.PI/3) {
-    angle -= 0.1;
-  }
-  else if (event.which === 38  || event.keyCode === 38) {  //up
-    engine += 0.3;
-  }
-  else if ((event.which === 40  || event.keyCode === 40) && force > 0.3) {  //down
-    engine -= 0.3;
-  }
-  else if(event.which === 32  || event.keyCode === 32){ //space
-    if(clock.running) stop = true;
-  }
-  else if(event.which === 36  || event.keyCode === 36){ //Home
+  if ((event.which === 37  || event.keyCode === 37) && rot < Math.PI/3) {
+    rot += 0.1;
+  } else if ((event.which === 39  || event.keyCode === 39) && rot > -Math.PI/3) {
+    rot -= 0.1;
+  } else if (event.which === 38  || event.keyCode === 38) {  //up
+    power += 0.3;
+  } else if ((event.which === 40  || event.keyCode === 40) && force > 0.3) {  //down
+    power -= 0.3;
+  } else if(event.which === 32  || event.keyCode === 32){ //space
+    brakeOn = true;
+  } else if(event.which === 36  || event.keyCode === 36){ //Home
+    brakeOn = false;
     clock.start();
-    engine = 15;
-    speed = 1;
+    power = 5;
   }
 }
 
 function run(){
+
+  computeForce();
   var dt = clock.getDelta();
-  var omega = speed * Math.tan(angle)/20;  //20: 2個旋轉支點的距離(前後輪
-  var vv;
-  var force = computeF();
+  // vel = vel + force/mass * dt
+  vel.add (force.clone().multiplyScalar(dt/mass));
+  // pos = pos + vel * dt
+  pos.add (vel.clone().multiplyScalar(dt));
 
-  speed += force*dt/mess;
-  if(speed < 0.01){
-    clock.stop();
-    stop = false;
-  }
-
-  rotationCenter = model.localToWorld (new THREE.Vector3(-10, 0, -20/Math.tan(angle)));
-  vv = center.clone().sub(rotationCenter).applyAxisAngle (new THREE.Vector3(0,1,0), omega*dt);
-
-  center = vv.add(rotationCenter);
-  model.position.copy(center);
-  rot += omega*dt;
-  model.rotation.y = rot;
+  model.position.copy (pos);
+  model.rotation.y = Math.atan2(-vel.z, vel.x);
+  if(brakeOn === true && vel.length() < 3) clock.stop();
 }
 
-function computeF() {
-  if (stop)
-    engine = 0;
 
-  var Cd = 0.44;
-  var force = engine + (speed * (-Cd)); //air drag
-  return force;
+function computeForce() {
+
+  force = brakeOn ? new THREE.Vector3(0, 0, 0) : new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), model.rotation.y + rot).multiplyScalar(power);
+
+  var alpha = 0.4;  // drag
+  force.add (vel.clone().multiplyScalar(-alpha));
 }
 
 function animate() {
+
   if(clock.running) run();
   controls.update();
   requestAnimationFrame(animate);
+  render();
+}
+
+function render() {
   renderer.render(scene, camera);
 }
+
 </script>
 </body>
 </html>
