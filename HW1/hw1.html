@@ -16,16 +16,34 @@
 body {
   overflow: hidden;
 }
+.pie{
+  position:absolute;
+  bottom:0px;
+  left:1%;
+  margin-left:0px;
+  width:200px;
+  height:100px;
+  overflow:hidden;
+  border-radius:100px 100px 0 0;
+  -webkit-animation:a 5s infinite linear;
 
-#dashboard{
-  position: absolute;
-  bottom: 0px;
-  height:90px;
-  width:180px;
-  border-radius: 90px 90px 0 0;
-  -moz-border-radius: 90px 90px 0 0;
-  -webkit-border-radius: 90px 90px 0 0;
-  background: #123456;
+}
+.pie:before{
+  content:"";
+  box-sizing:border-box;
+  position:absolute;
+  top:0px;
+  right:0px;  
+  width:200px;
+  height:100px;
+  background:#123456;
+  border-style:solid;
+  border-color:#000;
+  border-width:6px 6px 0;
+  border-radius:100px 100px 0 0;
+  transform-origin:100px 100px;
+  transform:rotate(180deg);
+  -webkit-animation:a1 5s infinite linear;
 }
 </style>
 </head>
@@ -34,7 +52,7 @@ body {
 <div id="info">HW1
 <a href='https://clara.io/view/08ed923e-d978-4b78-a19a-f28bd48e985a'>*</a>
 </div>
-<div id="dashboard"></div>
+<div class="pie"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r76/three.min.js"></script>
 <script src="https://dl.dropboxusercontent.com/u/3587259/Code/Threejs/OrbitControls.js"></script>
 <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
@@ -44,8 +62,10 @@ var camera, scene, renderer, controls;
 var model, brakeOn, power, rot, mass;
 var pos, vel, force;
 var clock;
+var min, max, count;
 
 $('body').keydown(onKeypress);
+
 
 init();
 animate();
@@ -77,15 +97,17 @@ function init() {
   power = 5;
   rot = 0;
   mass = 1;
+  min = 0;
+  max = 100;
 
   $.getJSON('model.json', function(data) {
-    var loader = new THREE.ObjectLoader();
-    var object = loader.parse(data);
-    object.scale.set(7, 7, 7);
-    object.position.set(-32, -30, 10);
-    object.rotation.y = Math.PI;
-    model.add(object);
-  });
+      var loader = new THREE.ObjectLoader();
+      var object = loader.parse(data);
+      object.scale.set(7, 7, 7);
+      object.position.set(-32, -30, 10);
+      object.rotation.y = Math.PI;
+      model.add(object);
+      });
   scene.add(model);
 
   window.addEventListener('resize', onWindowResize, false);
@@ -96,25 +118,6 @@ function onWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-}
-
-function onKeypress(event) {
-
-  if ((event.which === 37  || event.keyCode === 37) && rot < Math.PI/3) {
-    rot += 0.1;
-  } else if ((event.which === 39  || event.keyCode === 39) && rot > -Math.PI/3) {
-    rot -= 0.1;
-  } else if (event.which === 38  || event.keyCode === 38) {  //up
-    power += 0.3;
-  } else if ((event.which === 40  || event.keyCode === 40) && force > 0.3) {  //down
-    power -= 0.3;
-  } else if(event.which === 32  || event.keyCode === 32){ //space
-    brakeOn = true;
-  } else if(event.which === 36  || event.keyCode === 36){ //Home
-    brakeOn = false;
-    clock.start();
-    power = 5;
-  }
 }
 
 function run(){
@@ -128,27 +131,70 @@ function run(){
 
   model.position.copy (pos);
   model.rotation.y = Math.atan2(-vel.z, vel.x);
-  if(brakeOn === true && vel.length() < 3) clock.stop();
+  if(brakeOn === true && vel.length() < 3){
+    count = 0;
+    clock.stop();
+  }
 }
 
 
 function computeForce() {
 
-  force = brakeOn ? new THREE.Vector3(0, 0, 0) : new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), model.rotation.y + rot).multiplyScalar(power);
+  if(brakeOn && power >= 0.1) power -= 0.1;
+  var changeForce = power <= 0.1 ? true : false;
+  force = changeForce ? new THREE.Vector3(0, 0, 0) : new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), model.rotation.y + rot).multiplyScalar(power);
 
   var alpha = 0.4;  // drag
   force.add (vel.clone().multiplyScalar(-alpha));
 }
 
+function onKeypress(event) {
+
+  if ((event.which === 37  || event.keyCode === 37) && rot < Math.PI/3) {
+    rot += 0.1;
+  } else if ((event.which === 39  || event.keyCode === 39) && rot > -Math.PI/3) {
+    rot -= 0.1;
+  } else if (vel.length() < (max - 20) && (event.which === 38  || event.keyCode === 38)) {  //up
+    power += 0.3;
+  } else if ((event.which === 40  || event.keyCode === 40) && force > 0.3) {  //down
+    power -= 0.3;
+  } else if(event.which === 32  || event.keyCode === 32){ //space
+    brakeOn = true;
+  } else if(event.which === 36  || event.keyCode === 36){ //Home
+    brakeOn = false;
+    clock.start();
+    power = 5;
+  }
+}
+
 function animate() {
 
   if(clock.running) run();
+
+  $(function(){
+    var deg; //range = 180 ~ 360
+    var range = max - min;
+    var speed = vel.length() || 0;
+    if(!clock.running){
+      speed = speed <= 0.1 * count ? 0 : speed - 0.1 * count;
+      count++;
+    }
+
+    deg = 180 + 180 * (speed - min) / range;
+    if(deg > 360) deg = 360;
+    _deg(deg);
+
+    function _deg(deg){
+      $('head').append(
+        "<style>"+
+        ".pie:before{transform:rotate("+(deg)+"deg);}"+
+        "</style>"
+      );
+
+    }
+  });
   controls.update();
   requestAnimationFrame(animate);
-  render();
-}
-
-function render() {
   renderer.render(scene, camera);
 }
 
