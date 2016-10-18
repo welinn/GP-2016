@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+<title>HW0</title>
+<style>
+#info {
+  position: absolute;
+  top: 2%;
+  width: 100%;
+  padding: 10px;
+  text-align: center;
+  color: #ffff00
+}
+
+body {
+  overflow: hidden;
+}
+</style>
+</head>
+
+
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r76/three.min.js"></script>
+<script src="https://dl.dropboxusercontent.com/u/3587259/Code/Threejs/OrbitControls.js"></script>
+<script>
+var scene, camera, renderer;
+var controls;
+var run, angle = 0;
+
+init();
+animate();
+
+function init() {
+  scene = new THREE.Scene();
+
+  camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 1000);
+  camera.position.set(0, 200, 200);
+
+  renderer = new THREE.WebGLRenderer();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x888888);
+  document.body.appendChild(renderer.domElement);
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+  var gridXZ = new THREE.GridHelper(100, 10);
+  gridXZ.setColors(new THREE.Color(0xff0000), new THREE.Color(0xffffff));
+  scene.add(gridXZ);
+  
+  run = new THREE.Object3D();
+  var train = new THREE.Object3D();
+  train.rotation.y = Math.PI;
+  var material = new THREE.MeshNormalMaterial();
+  
+  var head = new THREE.Mesh(
+    new THREE.CylinderGeometry(6, 6, 20, 20), material);
+  head.position.set(0, 22, 7);
+  head.rotation.x = Math.PI/2;
+  train.add(head);
+
+  var trainBody = new THREE.Mesh(
+    new THREE.BoxGeometry(18, 14, 30), material);
+  trainBody.position.set(0, 15, -4);
+  train.add(trainBody);
+  
+  var trainBox = new THREE.Mesh(
+    new THREE.BoxGeometry(18, 6, 2), material);
+  trainBox.position.set(0, 25, -4);
+  train.add(trainBox);
+  
+  var trainBox2 = trainBox.clone();
+  trainBox2.position.set(0, 25, -18);
+  train.add(trainBox2);
+  
+  var trainBox3 = new THREE.Mesh(
+    new THREE.BoxGeometry(2, 6, 12), material);
+  trainBox3.position.set(8, 25, -11);
+  train.add(trainBox3);
+  
+  var trainBox4 = trainBox3.clone();
+  trainBox4.position.set(-8, 25, -11);
+  train.add(trainBox4);
+  
+  var wheelTop = new THREE.Mesh(
+    new THREE.CylinderGeometry(6, 6, 19.4, 20, 1, false, 0, Math.PI), material);
+  wheelTop.position.set(0, 8, 10);
+  wheelTop.rotation.z = Math.PI/2;
+  train.add(wheelTop);
+  
+  var wheel = new THREE.Mesh(
+    new THREE.CylinderGeometry(5, 5, 5, 20), material);
+  wheel.position.set(6.5, 5, 10);
+  wheel.rotation.z = Math.PI/2;
+  train.add(wheel);
+  
+  var wheel_1 = wheel.clone();
+  wheel_1.position.set(-6.5, 5, 10);
+  train.add(wheel_1);
+  
+  var wheel2 = wheel.clone();
+  wheel2.position.set(6.5, 5, -1);
+  var wheel_2 = wheel2.clone();
+  wheel_2.position.set(-6.5, 5, -1);
+  train.add(wheel2);
+  train.add(wheel_2);
+  
+  var wheel3 = wheel.clone();
+  wheel3.position.set(6.5, 5, -12);
+  var wheel_3 = wheel3.clone();
+  wheel_3.position.set(-6.5, 5, -12);
+  train.add(wheel3);
+  train.add(wheel_3);
+ 
+  var bottom = new THREE.Mesh(
+    new THREE.BoxGeometry(20.4, 2, 38), material);
+  bottom.position.set(0, 7, 0);
+  train.add(bottom);
+  
+  var bottomF = new THREE.Mesh(
+    new THREE.BoxGeometry(20.4, 2, 2), material);
+  bottomF.position.set(0, 5, 18);
+  train.add(bottomF);
+  
+  train.position.set(72, 0, 0);
+  
+  run.add(train);
+  scene.add(run);
+  
+  var rail = new THREE.Object3D();
+  var railMaterial = new THREE.MeshBasicMaterial({color: 0x505050, side: THREE.DoubleSide});
+  
+  var out1 = new THREE.Mesh(
+    new THREE.CylinderGeometry(80, 80, 1, 32, 1, true),
+    railMaterial);
+  out1.position.set(0, 0.5, 0);
+  rail.add(out1);
+  
+  var out2 = new THREE.Mesh(
+    new THREE.CylinderGeometry(79, 79, 1, 32, 1, true),
+    railMaterial);
+  out2.position.set(0, 0.5, 0);
+  rail.add(out2);
+
+  var outTop = new THREE.Mesh(
+  	new THREE.RingGeometry( 79, 80, 32 ), railMaterial);
+  outTop.rotation.x = -Math.PI/2;
+  outTop.position.set(0, 1, 0);
+	rail.add(outTop);
+  
+  var outButtom = outTop.clone();
+  outButtom.rotation.x = Math.PI/2;
+	rail.add(outButtom);
+  
+  var in1 = new THREE.Mesh(
+    new THREE.CylinderGeometry(67, 67, 1, 32, 1, true),
+    railMaterial);
+  in1.position.set(0, 0.5, 0);
+  rail.add(in1);
+  
+  var in2 = new THREE.Mesh(
+    new THREE.CylinderGeometry(66, 66, 1, 32, 1, true),
+    railMaterial);
+  in2.position.set(0, 0.5, 0);
+  rail.add(in2);
+  
+  var inTop = new THREE.Mesh(
+  	new THREE.RingGeometry( 66, 67, 32 ), railMaterial);
+  inTop.rotation.x = -Math.PI/2;
+  inTop.position.set(0, 1, 0);
+	rail.add(inTop);
+  
+  var inButtom = inTop.clone();
+  inButtom.rotation.x = Math.PI/2;
+	rail.add(inButtom);
+  
+  var woodMaterial = new THREE.MeshBasicMaterial({color: 0xBB3D00});
+  var wood = new THREE.Object3D();
+  var mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(12, 1, 2), woodMaterial);
+  var cir = Math.PI * 2;
+  var interval = Math.PI / 10;
+  
+  for(var i = 0; i < cir; i += interval){
+    var pos = new THREE.Vector3(Math.cos(i) * 73, 0.5, Math.sin(i) * 73);
+    var tmp = mesh.clone();
+    tmp.position.copy(pos);
+    tmp.rotation.y = -i;
+    wood.add(tmp);
+  }
+  rail.add(wood);
+  scene.add(rail);
+  
+	window.addEventListener('resize', onWindowResize, false);
+}
+
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function animate() {
+  
+  angle += 0.01;
+  run.rotation.y = angle;
+  
+  controls.update();
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+}
+</script>
+</body>
+</html>
