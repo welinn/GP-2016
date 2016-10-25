@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<style>
+
+#info {
+  position: absolute;
+  top: 0px;
+  width: 100%;
+  padding: 10px;
+  text-align: center;
+  color: #ffff00
+}
+
+body {
+  overflow: hidden;
+}
+
+</style>
+</head>
+
+<body>
+<div id="info">HW2 Side-Scrolling Game [Part 1]
+  <a href='javascript:backgroundChoose()'>background</a>
+  <a href='http://opengameart.org/content/large-forest-background'>*</a>
+  <a href='http://hula-ula-art.blogspot.tw/2013/05/its-repeatable-forest-background.html'>*</a>
+</div>
+<script src="http://cdnjs.cloudflare.com/ajax/libs/three.js/r76/three.min.js"></script>
+<script src="https://jyunming-chen.github.io/tutsplus/js/KeyboardState.js"></script>
+<script type="text/javascript">
+  document.oncontextmenu = function(){return false;}
+</script>
+<script>
+var camera, scene, renderer;
+var pos, vel, force;
+var clock = new THREE.Clock();
+var ball, ballR = window.innerHeight * 0.05;
+var background1, background2, back1 = true;
+var rangeMin, rangeMax, cameraMin, cameraMax;
+var keyboard = new KeyboardState();
+
+init();
+animate();
+
+function init() {
+  renderer = new THREE.WebGLRenderer({
+    antialias: true
+  });
+
+  pos = new THREE.Vector3(-window.innerWidth/2 + ballR, 40, 0);
+  vel = new THREE.Vector3(25, 0, 0);
+  rangeMin = -window.innerWidth / 2 + ballR * 1.05;
+  rangeMax = window.innerWidth * 5 - window.innerWidth * 0.5 - ballR * 1.05;
+  cameraMin = 0;
+  cameraMax = window.innerWidth * 4
+
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x888888);
+  document.body.appendChild(renderer.domElement);
+
+  scene = new THREE.Scene();
+  camera = new THREE.OrthographicCamera(-window.innerWidth/2, window.innerWidth/2, window.innerHeight * 0.9, -window.innerHeight * 0.1, -10, 100);
+  camera.position.z = 10;
+  scene.add(camera);
+
+//  var material = new THREE.MeshBasicMaterial({color:0xffffff*Math.random()});
+  background1 = new THREE.Object3D();
+  background2 = new THREE.Object3D();
+  var b1 = new THREE.MeshBasicMaterial({map: THREE.ImageUtils.loadTexture('background/01.jpg')});
+  var b2 = new THREE.MeshBasicMaterial({map: THREE.ImageUtils.loadTexture('background/02.jpg')});
+  for (var i = 0; i < 5; i++){
+    var tmp = new THREE.Mesh (new THREE.PlaneGeometry (window.innerWidth, window.innerHeight), b1);
+    tmp.position.y = window.innerHeight * 0.4;
+    tmp.position.x = i * window.innerWidth;
+    background1.add(tmp);
+    var tmp2 = new THREE.Mesh (new THREE.PlaneGeometry (window.innerWidth, window.innerHeight), b2);
+    tmp2.position.y = window.innerHeight * 0.4;
+    tmp2.position.x = i * window.innerWidth;
+    background2.add(tmp2);
+
+  }
+  scene.add (background1);
+
+  ball = new THREE.Mesh(new THREE.CircleGeometry(ballR, 20), new THREE.MeshBasicMaterial({
+    color: 0xff00ff
+  }));
+  scene.add(ball);
+  ball.position.y = window.innerHeight * 0.3;
+
+  var ground = new THREE.Mesh(new THREE.PlaneGeometry(window.innerWidth * 5, window.innerHeight * 0.1), new THREE.MeshBasicMaterial({
+    color: 0x115500
+  }));
+  scene.add(ground);
+  ground.position.y = -window.innerHeight * 0.05;
+  ground.position.x = window.innerWidth * 5 / 2 - window.innerWidth * 0.5;
+
+  window.addEventListener('resize', onWindowResize, false);
+}
+
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function keyboardExe(){
+  keyboard.update();
+//  if(Math.abs(vel.x) < 250){
+  if(keyboard.pressed ('right') && vel.x < 250) {
+    vel.x += 5; 
+  } else if(keyboard.pressed ('left') && vel.x > -250) {
+    vel.x -= 5;  
+  } else if(ball.position.y <= window.innerHeight * 0.8 && keyboard.pressed ('space')) {
+    vel.y += 30; 
+  }
+}
+
+function backgroundChoose(){
+  back1 ? scene.remove(background1) : scene.remove(background2);
+  back1 ? scene.add(background2) : scene.add(background1);
+  back1 = !back1;
+}
+
+function ballMove(){
+  var dt = clock.getDelta();
+  if(ball.position.x > cameraMin && ball.position.x < cameraMax) camera.position.x = ball.position.x;
+  else if(ball.position.x <= cameraMin) camera.position.x = cameraMin;
+  else camera.position.x = cameraMax;
+
+  // force: add gravity first
+  force = new THREE.Vector3(0, -160, 0);
+  if (pos.y <= ballR + 0.05) {    // if contact, add contact force
+    pos.y = ballR;
+    force.add(new THREE.Vector3(0, 160, 0));
+  }  
+  
+  // then do Euler's
+  if(ball.position.x < rangeMax && ball.position.x > rangeMin){
+    vel.add(force.clone().multiplyScalar(dt));
+    pos.add(vel.clone().multiplyScalar(dt));
+    ball.position.copy(pos);
+
+  } else{
+    vel = new THREE.Vector3();
+    var posX = ball.position.x >= rangeMax ? rangeMax - 0.01 : rangeMin + 0.01;
+    ball.position.x = posX;
+    pos.x = posX; 
+  }
+
+  if (pos.y <= ballR + 0.05) {
+    vel.y *= -.1;  //反彈, < 1 : 衰減
+  }
+ 
+}
+
+function animate() {
+  keyboardExe ();
+   
+  ballMove(); 
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+}
+
+</script>
+</body>
+</html>
+
