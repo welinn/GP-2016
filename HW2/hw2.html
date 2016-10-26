@@ -37,7 +37,7 @@ var pos, vel, force;
 var clock = new THREE.Clock();
 var ball, ballR = window.innerHeight * 0.05;
 var background1, background2, back1 = true;
-var rangeMin, rangeMax, cameraMin, cameraMax;
+var rangeMin, rangeMax, cameraMin, cameraMax, windowTop = window.innerHeight * 0.9;
 var keyboard = new KeyboardState();
 
 init();
@@ -128,11 +128,14 @@ function ballMove(){
   else if(ball.position.x <= cameraMin) camera.position.x = cameraMin;
   else camera.position.x = cameraMax;
 
-  // force: add gravity first
-  force = new THREE.Vector3(0, -160, 0);
+  //重力
+  force = new THREE.Vector3(0, -300, 0);
   if (pos.y <= ballR + 0.05) {    // if contact, add contact force
     pos.y = ballR;
-    force.add(new THREE.Vector3(0, 160, 0));
+    force.add(new THREE.Vector3(0, 300, 0));
+  }  
+  if (pos.y > window.innerHeight * 0.9 - ballR) {    // if contact, add contact force
+    pos.y = window.innerHeight * 0.9 - ballR;
   }  
   
   // then do Euler's
@@ -148,7 +151,7 @@ function ballMove(){
     pos.x = posX; 
   }
 
-  if (pos.y <= ballR + 0.05) {
+  if (pos.y <= ballR + 0.05 || pos.y >= windowTop - ballR - 0.05){
     vel.y *= -.1;  //反彈, < 1 : 衰減
   }
  
