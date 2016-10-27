@@ -37,8 +37,9 @@ var pos, vel, force;
 var clock = new THREE.Clock();
 var ball, ballR = window.innerHeight * 0.05;
 var background1, background2, back1 = true;
-var rangeMin, rangeMax, cameraMin, cameraMax, windowTop = window.innerHeight * 0.9;
-var keyboard = new KeyboardState();
+var rangeMin, rangeMax, cameraMin, cameraMax, hys, windowTop = window.innerHeight * 0.9;
+var keyboard = new KeyboardState(), move = true;
+var backgroundCount = 5;
 
 init();
 animate();
@@ -50,10 +51,10 @@ function init() {
 
   pos = new THREE.Vector3(-window.innerWidth/2 + ballR, 40, 0);
   vel = new THREE.Vector3(25, 0, 0);
-  rangeMin = -window.innerWidth / 2 + ballR * 1.05;
-  rangeMax = window.innerWidth * 5 - window.innerWidth * 0.5 - ballR * 1.05;
+  rangeMin = -window.innerWidth * 0.5 + ballR * 1.05;
+  rangeMax = window.innerWidth * (backgroundCount - 0.5) - ballR * 1.05;
   cameraMin = 0;
-  cameraMax = window.innerWidth * 4
+  cameraMax = window.innerWidth * (backgroundCount - 1);
 
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setClearColor(0x888888);
@@ -64,12 +65,11 @@ function init() {
   camera.position.z = 10;
   scene.add(camera);
 
-//  var material = new THREE.MeshBasicMaterial({color:0xffffff*Math.random()});
   background1 = new THREE.Object3D();
   background2 = new THREE.Object3D();
   var b1 = new THREE.MeshBasicMaterial({map: THREE.ImageUtils.loadTexture('background/01.jpg')});
   var b2 = new THREE.MeshBasicMaterial({map: THREE.ImageUtils.loadTexture('background/02.jpg')});
-  for (var i = 0; i < 5; i++){
+  for (var i = 0; i < backgroundCount; i++){
     var tmp = new THREE.Mesh (new THREE.PlaneGeometry (window.innerWidth, window.innerHeight), b1);
     tmp.position.y = window.innerHeight * 0.4;
     tmp.position.x = i * window.innerWidth;
@@ -106,13 +106,19 @@ function onWindowResize() {
 
 function keyboardExe(){
   keyboard.update();
-//  if(Math.abs(vel.x) < 250){
-  if(keyboard.pressed ('right') && vel.x < 250) {
-    vel.x += 5; 
-  } else if(keyboard.pressed ('left') && vel.x > -250) {
-    vel.x -= 5;  
-  } else if(ball.position.y <= window.innerHeight * 0.8 && keyboard.pressed ('space')) {
-    vel.y += 30; 
+  if((keyboard.up('right') || keyboard.up('left') || keyboard.up('space')) && ball.position.y >= ballR + 0.05){
+    move = false;
+  } else if(ball.position.y <= ballR + 0.05){
+    move = true;
+  }
+  if(move){
+    if(keyboard.pressed ('right') && vel.x < 250) {
+      vel.x += 5; 
+    } else if(keyboard.pressed ('left') && vel.x > -250) {
+      vel.x -= 5;  
+    } else if(ball.position.y <= window.innerHeight * 0.8 && keyboard.pressed ('space')) {
+      vel.y += 30; 
+    }
   }
 }
 
@@ -124,10 +130,16 @@ function backgroundChoose(){
 
 function ballMove(){
   var dt = clock.getDelta();
-  if(ball.position.x > cameraMin && ball.position.x < cameraMax) camera.position.x = ball.position.x;
-  else if(ball.position.x <= cameraMin) camera.position.x = cameraMin;
-  else camera.position.x = cameraMax;
+  var sub = camera.position.x - window.innerWidth * 0.4;
+  var add = camera.position.x + window.innerWidth * 0.4;
 
+  if(ball.position.x < sub){
+    camera.position.x -= (sub - ball.position.x);
+    camera.position.x = camera.position.x > cameraMin ? camera.position.x : cameraMin;
+  } else if(ball.position.x > add){
+    camera.position.x += (ball.position.x - add);
+    camera.position.x = camera.position.x < cameraMax ? camera.position.x : cameraMax;
+  }
   //重力
   force = new THREE.Vector3(0, -300, 0);
   if (pos.y <= ballR + 0.05) {    // if contact, add contact force
