@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<style>
+
+#info {
+  position: absolute;
+  top: 0px;
+  width: 100%;
+  text-align: center;
+  color: #ffff00;
+}
+
+.messageBack{
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  color: #ffff00;
+  background: #123456;
+  opacity: 0.8;
+}
+
+#information{
+  position: absolute;
+  top: 30%;
+  left: 0;
+  width: 100%;
+  height: 35%;
+  color: #ffff00;
+  background: #123456;
+  text-align:center;
+  font-family: Arial;
+  font-size: 25px;
+  opacity: 0.9;
+}
+
+#start{
+  position: absolute;
+  top: 70%;
+  left: calc(50% - 60px);
+  box-shadow: rgb(159, 180, 242) 0px 0px 0px 2px;
+//  background: linear-gradient(rgb(120, 146, 194) 5%, rgb(71, 110, 158) 100%) rgb(120, 146, 194);
+  border-radius: 10px;
+  border: 1px solid rgb(78, 96, 150);
+  display: inline-block;
+  cursor: pointer;
+  color: rgb(255, 255, 255);
+  font-family: Arial;
+  font-size: 19px;
+  padding: 12px 37px;
+  text-decoration: none;
+  text-shadow: rgb(40, 57, 102) 0px 1px 0px;
+}
+
+#play{
+  position: absolute;
+  top: 70%;
+  left: calc(50% - 50px);
+  box-shadow: rgb(159, 180, 242) 0px 0px 0px 2px;
+  border-radius: 10px;
+  border: 1px solid rgb(78, 96, 150);
+  display: inline-block;
+  cursor: pointer;
+  color: rgb(255, 255, 255);
+  font-family: Arial;
+  font-size: 19px;
+  padding: 12px 37px;
+  text-decoration: none;
+  text-shadow: rgb(40, 57, 102) 0px 1px 0px;
+}
+
+body {
+  overflow: hidden;
+}
+
+</style>
+<title>HW3 Side-Scrolling Game 2</title>
+</head>
+
+<body>
+<div id="info">
+  <a href='http://hula-ula-art.blogspot.tw/2013/05/its-repeatable-forest-background.html'>b</a>
+  <a href='http://www.sdknews.com/cross-platform/corona/animated-sprites-and-methods'>c</a>
+  <a href='http://www.kadrmasconcepts.com/blog/2011/05/20/sprite-sheets-return-of-the-animated-gif/'>b</a>
+</div>
+
+<div class='messageBack' id='standby'>
+  <span id= "start">start</span>
+</div>
+<div class='messageBack' id='replay' style='display: none;'>
+  <div id='information'></div>
+  <span class='button' id="play">play again</span>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r76/three.min.js"></script>
+<script src="https://jyunming-chen.github.io/tutsplus/js/KeyboardState.js"></script>
+<script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+
+<script src='ground.js'></script>
+<script src='bird.js'></script>
+<script src='cat.js'></script>
+<audio id='bgm' autoplay loop src='file/bgm.mp3'></audio>
+<audio id='mau' src='file/cat.mp3'></audio>
+
+<script>
+var camera, scene, renderer;
+var pos, vel, force;
+var clock = new THREE.Clock();
+var cat, bird = [];
+var catX = window.innerHeight * 0.2, catY = window.innerHeight * 0.1;
+var rangeMin, rangeMax, cameraMin, cameraMax, hys, windowTop = window.innerHeight * 0.9;
+var keyboard = new KeyboardState(), move = true;
+var backgroundCount = 5, totalLen = window.innerWidth * backgroundCount;
+
+var pointArr = [], birdPointArr = [];
+var back = false, backCount, backCountInit = 5;
+var nowPicture, time;
+var nowBird, birdTime, birdNo = 30, birdLeave;
+
+var source, playing;
+
+$('#start').click(function(){
+  $('#standby').fadeOut();
+  playing = true;
+});
+$('#play').click(function(){
+  $('#replay').fadeOut();
+  $('#information').fadeOut();
+
+  for(var i = 0; i < bird.length; i++) scene.remove(bird[i]);
+  gameInit();
+  nowPicture = spriteAnimate(0);
+  nowBird = birdSprite(0);
+  playing = true;
+  var bgm = document.getElementById('bgm');
+  bgm.currentTime = 0;
+  bgm.play();
+});
+
+init();
+animate();
+
+function init() {
+  renderer = new THREE.WebGLRenderer({
+    antialias: true
+  });
+
+  
+  rangeMin = catX * 1.05;
+  rangeMax = window.innerWidth * (backgroundCount) - catX * 1.05;
+  cameraMin = window.innerWidth / 2;
+  cameraMax = window.innerWidth * (backgroundCount - 1 / 2);
+
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x888888);
+  document.body.appendChild(renderer.domElement);
+
+  scene = new THREE.Scene();
+  camera = new THREE.OrthographicCamera(-window.innerWidth/2, window.innerWidth/2, window.innerHeight * 0.9, -window.innerHeight * 0.1, -10, 100);
+  scene.add(camera);
+
+  var background = makeBackground(
+    backgroundCount,
+    window.innerWidth,
+    window.innerHeight,
+    new THREE.MeshBasicMaterial({map: new THREE.TextureLoader().load('file/01.jpg')}));
+  var ground = makeGround();
+  scene.add(background);
+  scene.add(ground);
+
+  createArray();
+  birdArray();
+  cat = new THREE.Mesh(new THREE.PlaneGeometry(catX * 2, catY * 2), new THREE.MeshBasicMaterial({
+    transparent : true,
+    map : new THREE.TextureLoader().load('file/cat.png'),
+    side: THREE.DoubleSide,
+  }));
+  scene.add(cat);
+
+  gameInit();
+  nowPicture = spriteAnimate(nowPicture);
+  nowBird = birdSprite(nowBird);
+
+  window.addEventListener('resize', onWindowResize, false);
+}
+
+function gameInit(){
+
+  pos = new THREE.Vector3(0, window.innerHeight * 0.3, 0);
+  vel = new THREE.Vector3(25, 0, 0);
+  camera.position.z = 10;
+  camera.position.x = window.innerWidth;
+  cat.position.y = window.innerHeight * 0.3;
+  source = 0;
+  nowBird = 0;
+  nowPicture = 0;
+  time = 0;
+  birdTime = 0;
+  birdLeave = birdNo;
+  playing = false;
+  catMove();
+  cameraMove();
+  addBird(
+    new THREE.PlaneGeometry(catX * 2 / 3, catX * 2 / 3),
+    new THREE.MeshBasicMaterial({
+      transparent : true,
+      map : new THREE.TextureLoader().load('file/bird.png'),
+      side: THREE.DoubleSide,
+  }), birdNo);
+
+}
+
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function keyboardExe(){
+  keyboard.update();
+  var gHight = groundHight(cat.position.x);
+  if((keyboard.up('right') || keyboard.up('left') || keyboard.up('space')) && cat.position.y >= catY + gHight + 0.05){
+    move = false;
+  } else if(cat.position.y <= catY + gHight + 0.05){
+    move = true;
+  }
+  if(move){
+    if(keyboard.pressed ('right') && vel.x < 350) {
+      vel.x += 5;
+      if(back && vel.x >= 0) back = false;
+    } else if(keyboard.pressed ('left') && vel.x > -350) {
+      vel.x -= 5;
+      if(back && vel.x <= 0) back = false; 
+    } else if(cat.position.y <= window.innerHeight * 0.3 && keyboard.pressed ('space')) {
+      vel.y += 30; 
+    }
+  }
+}
+
+
+function gameStart(){
+  playing = true;
+}
+
+function cameraMove(){
+  var sub = camera.position.x - window.innerWidth * 0.3;
+  var add = camera.position.x + window.innerWidth * 0.3;
+
+  if(cat.position.x < sub){
+    camera.position.x -= (sub - cat.position.x);
+    camera.position.x = camera.position.x > cameraMin ? camera.position.x : cameraMin;
+  } else if(cat.position.x > add){
+    camera.position.x += (cat.position.x - add);
+    camera.position.x = camera.position.x < cameraMax ? camera.position.x : cameraMax;
+  }
+}
+
+function catMove(){
+  var dt = clock.getDelta();
+  time += dt;
+
+  if(time > 30 / Math.abs(vel.x)){
+    time = 0;
+    if(!back) nowPicture = spriteAnimate(nowPicture);
+  }
+
+  wall(cat.position.x + (catX * vel.x >= 0 ? catX : -catX), cat.position.x, cat.position.y);
+  if(vel.x < 0){
+    if(!back) cat.rotation.y = Math.PI;
+    else{
+      cat.rotation.y = 0;
+      vel.x += 0.1;
+      if(vel.x >= 0) back = false;
+    }
+  } else{
+    if(!back) cat.rotation.y = 0;
+    else{
+      cat.rotation.y = Math.PI;
+      vel.x -= 0.1;
+      if(vel.x <= 0) back = false;
+    }
+  }
+
+  var groundH = groundHight(pos.x);
+  var groundHNext = groundHight(pos.x + 0.1);
+  var gNormal = new THREE.Vector3(groundHNext - groundH, -0.1, 0).normalize();
+  //重力
+  force = new THREE.Vector3(0, -300, 0);
+  if (pos.y <= groundH + catY + 0.05) {    // if contact, add contact force
+    pos.y = groundH + catY;
+    force.add(new THREE.Vector3(0, 300, 0));
+    force.add(new THREE.Vector3(0, 300, 0).projectOnVector(gNormal));  //上坡減速 下坡加速
+    vel.y *= -.1;  //反彈, < 1 : 衰減
+  }
+
+  if (pos.y > window.innerHeight * 0.9 - catY) { // top limit
+    pos.y = window.innerHeight * 0.9 - catY;
+    vel.y *= -.1;  //反彈, < 1 : 衰減
+  }  
+  
+  // then do Euler's
+  if(cat.position.x < rangeMax && cat.position.x > rangeMin){
+    vel.add(force.clone().multiplyScalar(dt));
+    pos.add(vel.clone().multiplyScalar(dt));
+    cat.position.copy(pos);
+
+  } else{
+    vel = new THREE.Vector3();
+    var posX = cat.position.x >= rangeMax ? rangeMax - 0.01 : rangeMin + 0.01;
+    cat.position.x = posX;
+    pos.x = posX; 
+  }
+
+  if(cat.position.y <= catY + groundH && cat.position.x >= totalLen - catX * 1.1){
+    playing = false;
+    $('#replay').fadeIn();
+    $('#information').html('You catched <em>' + source + '</em> birds. ^o^/');
+  }
+}
+
+function checkIntersect(){
+  for(var i = 0; i < birdLeave; i ++){
+    var xSub = Math.abs(cat.position.x - bird[i].position.x);
+    if(xSub <= catX){
+      var ySub = Math.abs(cat.position.y - bird[i].position.y);
+      if(ySub <= catY){
+        source++;
+        scene.remove(bird[i]);
+        birdLeave--;
+        bird.splice(i, 1);
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function animate() {
+  if(playing){
+    keyboardExe ();
+    catMove();
+    cameraMove();
+
+    birdTime++;
+    if(birdTime > 3){
+      birdTime = 0;
+      nowBird = birdSprite(nowBird);
+    }
+    if(checkIntersect()){
+      var mau = document.getElementById('mau');
+      mau.currentTime = 0;
+      mau.play();
+    }
+  }
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+}
+
+</script>
+</body>
+</html>
+
