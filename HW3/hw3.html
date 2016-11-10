@@ -22,10 +22,18 @@
   background: #123456;
   opacity: 0.8;
 }
-
+#timer{
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 5%;
+  text-align: center;
+  font-size: 18px;
+  color: #ffffff;
+}
 #information{
   position: absolute;
-  top: 30%;
+  top: 40%;
   left: 0;
   width: 100%;
   height: 35%;
@@ -33,8 +41,20 @@
   background: #123456;
   text-align:center;
   font-family: Arial;
-  font-size: 25px;
-  opacity: 0.9;
+  font-size: 30px;
+}
+
+#failed{
+  position: absolute;
+  top: 30%;
+  left: 0;
+  width: 100%;
+  height: 35%;
+  color: #ff0000;
+  background: #123456;
+  text-align:center;
+  font-family: Arial;
+  font-size: 50px;
 }
 
 #start{
@@ -58,7 +78,7 @@
 #play{
   position: absolute;
   top: 70%;
-  left: calc(50% - 50px);
+  left: calc(50% - 90px);
   box-shadow: rgb(159, 180, 242) 0px 0px 0px 2px;
   border-radius: 10px;
   border: 1px solid rgb(78, 96, 150);
@@ -91,9 +111,14 @@ body {
   <span id= "start">start</span>
 </div>
 <div class='messageBack' id='replay' style='display: none;'>
-  <div id='information'></div>
+  <div id='information' style='display: none;'></div>
+  <div id='failed' style='display: none;'>failed</div>
   <span class='button' id="play">play again</span>
 </div>
+<div id='timer'>
+  1:00
+</div>
+
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r76/three.min.js"></script>
 <script src="https://jyunming-chen.github.io/tutsplus/js/KeyboardState.js"></script>
@@ -108,7 +133,7 @@ body {
 <script>
 var camera, scene, renderer;
 var pos, vel, force;
-var clock = new THREE.Clock();
+var clock = new THREE.Clock(false);
 var cat, bird = [];
 var catX = window.innerHeight * 0.2, catY = window.innerHeight * 0.1;
 var rangeMin, rangeMax, cameraMin, cameraMax, hys, windowTop = window.innerHeight * 0.9;
@@ -120,21 +145,22 @@ var back = false, backCount, backCountInit = 5;
 var nowPicture, time;
 var nowBird, birdTime, birdNo = 30, birdLeave;
 
-var source, playing;
+var source, timer, playTotalTime = 60;
 
 $('#start').click(function(){
   $('#standby').fadeOut();
-  playing = true;
+  clock.start();
 });
 $('#play').click(function(){
   $('#replay').fadeOut();
   $('#information').fadeOut();
+  $('#failed').fadeOut();
 
   for(var i = 0; i < bird.length; i++) scene.remove(bird[i]);
   gameInit();
   nowPicture = spriteAnimate(0);
   nowBird = birdSprite(0);
-  playing = true;
+  clock.start();
   var bgm = document.getElementById('bgm');
   bgm.currentTime = 0;
   bgm.play();
@@ -148,7 +174,9 @@ function init() {
     antialias: true
   });
 
-  
+  var vid = document.getElementById('bgm');
+  vid.volume = 0.4;
+
   rangeMin = catX * 1.05;
   rangeMax = window.innerWidth * (backgroundCount) - catX * 1.05;
   cameraMin = window.innerWidth / 2;
@@ -200,7 +228,7 @@ function gameInit(){
   time = 0;
   birdTime = 0;
   birdLeave = birdNo;
-  playing = false;
+  timer = 0;
   catMove();
   cameraMove();
   addBird(
@@ -242,7 +270,7 @@ function keyboardExe(){
 
 
 function gameStart(){
-  playing = true;
+  clock.start();
 }
 
 function cameraMove(){
@@ -258,10 +286,23 @@ function cameraMove(){
   }
 }
 
+function gameTimer(dt){
+  timer += dt;
+
+  if(timer >= playTotalTime){
+    $('#replay').fadeIn();
+    $('#failed').fadeIn();
+    clock.stop();
+  }
+  var t = playTotalTime - Math.floor(timer);
+  $('#timer').text(Math.floor(t / 60) + ':' + (t % 60 < 10 ? '0' : '') + (t % 60));
+}
+
 function catMove(){
   var dt = clock.getDelta();
-  time += dt;
+  gameTimer(dt);
 
+  time += dt;
   if(time > 30 / Math.abs(vel.x)){
     time = 0;
     if(!back) nowPicture = spriteAnimate(nowPicture);
@@ -315,9 +356,13 @@ function catMove(){
   }
 
   if(cat.position.y <= catY + groundH && cat.position.x >= totalLen - catX * 1.1){
-    playing = false;
+    var remain = playTotalTime - Math.floor(timer);
+    var point = source * 10 + remain * 5;
     $('#replay').fadeIn();
-    $('#information').html('You catched <em>' + source + '</em> birds. ^o^/');
+    $('#information').fadeIn();
+    $('#information')
+      .html('You catched <em>' + source + '</em> birds and remain <em>' + remain + '</em> second(s). ^o^/ </br>Your point: <em>' + point + '</em>');
+    clock.stop();
   }
 }
 
@@ -339,7 +384,7 @@ function checkIntersect(){
 }
 
 function animate() {
-  if(playing){
+  if(clock.running){
     keyboardExe ();
     catMove();
     cameraMove();
