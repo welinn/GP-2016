@@ -11,7 +11,7 @@ function createArray() {
   }
 }
 
-function spriteAnimate(nowPicture){
+function spriteAnimate(nowPicture, anim){
   for (var i = 0; i < cat.geometry.faceVertexUvs[0].length; i++)  //三角形(面)的個數
     for (var j = 0; j < 3; j++)  //一個面3個點
       cat.geometry.faceVertexUvs[0][i][j].copy(pointArr[nowPicture][i][j]);
