@@ -127,7 +127,7 @@ body {
   0
 </div>
 <div id='timer'>
-  1:00
+  1:15
 </div>
 <div class='messageBack' id='standby'>
   <span id= "start">start</span>
@@ -163,7 +163,7 @@ var back = false, backCount, backCountInit = 5;
 var nowPicture, time;
 var nowBird, birdTime, birdNo = 30, birdLeave;
 
-var source, timer, playTotalTime = 60;
+var source, timer, playTotalTime = 75;
 
 $('#start').click(function(){
   $('#standby').fadeOut();
@@ -235,11 +235,11 @@ function init() {
 
 function gameInit(){
 
-  pos = new THREE.Vector3(0, window.innerHeight * 0.3, 0);
+  pos = new THREE.Vector3(catX, window.innerHeight * 0.3, 0);
   vel = new THREE.Vector3(25, 0, 0);
   camera.position.z = 10;
-  camera.position.x = window.innerWidth;
-  cat.position.y = window.innerHeight * 0.3;
+  camera.position.x = window.innerWidth * 0.5;
+  cat.position.set(catX, window.innerHeight * 0.3, 0);
   source = 0;
   nowBird = 0;
   nowPicture = 0;
@@ -247,8 +247,6 @@ function gameInit(){
   birdTime = 0;
   birdLeave = birdNo;
   timer = 0;
-  catMove();
-  cameraMove();
   addBird(
     new THREE.PlaneGeometry(catX * 2 / 3, catX * 2 / 3),
     new THREE.MeshBasicMaterial({
@@ -280,7 +278,7 @@ function keyboardExe(){
     } else if(keyboard.pressed ('left') && vel.x > -350) {
       vel.x -= 5;
       if(back && vel.x <= 0) back = false; 
-    } else if(cat.position.y <= window.innerHeight * 0.3 && keyboard.pressed ('space')) {
+    } else if(cat.position.y <= window.innerHeight * 0.2 + groundHight(cat.position.x) && keyboard.pressed ('space')) {
       vel.y += 30; 
     }
   }
@@ -378,8 +376,12 @@ function catMove(){
     var point = source * 10 + remain * 5;
     $('#replay').fadeIn();
     $('#information').fadeIn();
-    $('#information')
-      .html('You catched <em>' + source + '</em> birds and remain <em>' + remain + '</em> second(s). ^o^/ </br>Your point: <em>' + point + '</em>');
+    if(source === birdNo)
+      $('#information')
+        .html('You catched all birds and remain <em>' + remain + '</em> second(s). ^o^/ </br>Your point: <em>' + (point + 300) + '</em>');
+    else
+      $('#information')
+        .html('You catched <em>' + source + '</em> birds and remain <em>' + remain + '</em> second(s). ^o^/ </br>Your point: <em>' + point + '</em>');
     clock.stop();
   }
 }
@@ -409,14 +411,16 @@ function animate() {
     cameraMove();
 
     birdTime++;
-    if(birdTime > 3){
-      birdTime = 0;
-      nowBird = birdSprite(nowBird);
-    }
-    if(checkIntersect()){
-      var mau = document.getElementById('mau');
-      mau.currentTime = 0;
-      mau.play();
+    if(bird.length > 0){
+      if(birdTime > 3){
+        birdTime = 0;
+        nowBird = birdSprite(nowBird);
+      }
+      if(checkIntersect()){
+        var mau = document.getElementById('mau');
+        mau.currentTime = 0;
+        mau.play();
+      }
     }
   }
   requestAnimationFrame(animate);
