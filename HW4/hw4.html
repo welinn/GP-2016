@@ -148,7 +148,11 @@ function animate() {
 
   for(var i = 0; i < totalAgent; i++){
     agents[i].checkNearBlock(agents[i], circle);
-    if(steering) for(var j = 0; j < totalAgent; j++) if(j !== i) agents[i].neighborCheck(agents[j]);
+    if(steering){
+      agents[i].neighbor = [];
+      for(var j = 0; j < totalAgent; j++) if(j !== i) agents[i].neighborCheck(agents[j]);
+      agents[i].groupSteer();
+    }
     catched = agents[i].update(dt, steering);
     if(catched){  // reset
       for(var j = 0; j < totalAgent; j++){

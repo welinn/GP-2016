@@ -65,11 +65,27 @@ Agent.prototype = {
   neighborCheck: function(otherAgent){
     var vector = this.pos.clone().sub(otherAgent.pos);
     var dist = vector.length();
-    var force = new THREE.Vector3();
     if(dist < this.neighborClose){
-      force.copy(vector.setLength(20 * (this.neighborClose - dist)));
+      this.neighbor.push(otherAgent);
     }
-    this.neighborForce = force;
+  },
+
+  groupSteer: function(){
+
+    //separation
+    var force = new THREE.Vector3();
+    for(var i = 0; i < this.neighbor.length; i++){
+      var vector = this.pos.clone().sub(this.neighbor[i].pos);
+      var dist = vector.length();
+      force.add(vector.setLength(this.neighborClose - dist));
+    }
+    this.neighborForce = force.multiplyScalar(40);
+
+    // cohesion, alignment
+
+
+
+
   },
 
   update: function(dt, steering) {
