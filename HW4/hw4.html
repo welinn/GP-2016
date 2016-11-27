@@ -7,10 +7,38 @@
 body {
   overflow: hidden;
 }
+#info {
+  position: absolute;
+  top: 0;
+  width: 100%;
+}
+
+.button {
+  border: none;
+  color: white;
+  padding: 1% 1%;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  margin: 10px 2px;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.steer {
+  background-color: white;
+  opacity: 0.5;
+  color: black; 
+  border: 5px solid #008CBA;
+}
 </style>
 </head>
 
 <body>
+<div id="info">
+  <button class="button steer">Group Steer</button>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r76/three.min.js"></script>
 <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
@@ -19,15 +47,17 @@ body {
 <script>
 
 var camera, scene, renderer, controls;
-var puck, agents = [], halfWidth = 3, totalAgent = 7;
+var puck, agents = [], halfWidth = 3, bodyLen = 12, totalAgent = 7;
 var circle = [], totalBlock = 3, k = 2;
 var target = new THREE.Vector3();
-var targetCatch = false;
-var targetOmega = 0.3;
 var clock = new THREE.Clock();
-
+var steering = false, neighborClose = 5;
 var mouse = new THREE.Vector2();
 var raycaster, pickables = [], planeLen = 400;
+
+$('.steer').click(function(){
+  steering = !steering;
+});
 
 init();
 animate();
@@ -71,7 +101,7 @@ function init() {
 
   //////////////////////
 
-  var geometry = new THREE.BoxGeometry(15, 2, halfWidth * 2);
+  var geometry = new THREE.BoxGeometry(bodyLen, 2, halfWidth * 2);
   var material = new THREE.MeshNormalMaterial();
   var box = new THREE.Mesh(geometry, material);
   target.set(planeLen * 0.25, 0, -planeLen * 0.375);
@@ -79,7 +109,7 @@ function init() {
     agents.push(new Agent(
       box.clone(),
       new THREE.Vector3(Math.random() * planeLen - planeLen * 0.5, 0, 180),
-      halfWidth));
+      halfWidth, bodyLen, neighborClose));
     scene.add(agents[i].mesh);
     agents[i].setTarget(target);
   }
@@ -108,31 +138,6 @@ function onDocumentMouseDown(event) {
   if (intersects.length > 0) {
     target.copy (intersects[0].point);
   }
-
-}
-
-function checkNearBlock(agent, blocks){
-
-  var blockForce = new THREE.Vector3();
-  var tmp = new THREE.Vector3();
-  var tmpProj, repulsion;
-
-  for(var i = 0; i < totalBlock; i++){
-    tmp = blocks[i].pos.clone().sub(agent.pos);
-    if(tmp.clone().dot(agent.vel) > 0){  // in front
-
-      tmpProj = tmp.clone().projectOnVector(agent.vel);
-
-      if(tmpProj.length() < blocks[i].r * 2){  // close enough
-
-        repulsion = tmpProj.clone().sub(tmp);
-        var dist = blocks[i].r + agent.halfWidth;
-        if(repulsion.length() < dist) blockForce.copy(repulsion.setLength(100));
-      }
-    }
-  }
-  blockForce.y = 0;
-  return blockForce;
 }
 
 function animate() {
@@ -142,12 +147,13 @@ function animate() {
   puck.position.copy(target);
 
   for(var i = 0; i < totalAgent; i++){
-    var blockForce = checkNearBlock(agents[i], circle);
-    catched = agents[i].update(dt, blockForce);
-    if(catched){
-      for(var i = 0; i < totalAgent; i++){
-        agents[i].vel.set(0, 0, 0);
-        agents[i].pos.copy(new THREE.Vector3(Math.random() * planeLen - planeLen * 0.5, 0, planeLen * 0.5));
+    agents[i].checkNearBlock(agents[i], circle);
+    if(steering) for(var j = 0; j < totalAgent; j++) if(j !== i) agents[i].neighborCheck(agents[j]);
+    catched = agents[i].update(dt, steering);
+    if(catched){  // reset
+      for(var j = 0; j < totalAgent; j++){
+        agents[j].vel.set(0, 0, 0);
+        agents[j].pos.copy(new THREE.Vector3(Math.random() * planeLen - planeLen * 0.5, 0, planeLen * 0.5));
       }
       break;
     }

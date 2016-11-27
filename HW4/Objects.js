@@ -1,24 +1,83 @@
-var Agent = function(mesh, initPos, h) {
+var Agent = function(mesh, initPos, h, l, n) {
   this.pos = new THREE.Vector3();
   if (initPos) this.pos.copy(initPos);
 
   this.vel = new THREE.Vector3();
   this.force = new THREE.Vector3();
   this.target = new THREE.Vector3();
+  this.blockForce = new THREE.Vector3();
+  this.neighborForce = new THREE.Vector3();
   this.angle = 0;
   this.mesh = mesh;
   this.maxSpeed = 60;
   this.maxForce = 60;
   this.halfWidth = h;
+  this.bodyLen = l;
+  this.status;
+  this.neighbor = [];
+  this.neighborClose = n;
 
-  this.setTarget = function(target) {
+}
+
+Agent.prototype = {
+  setTarget: function(target) {
     this.target.copy(target);
-  }
+  },
 
-  this.update = function(dt, blockForce) {
+  checkNearBlock: function(agent, blocks){
+
+    var blockForce = new THREE.Vector3();
+    var tmp = new THREE.Vector3();
+    var tmpProj, repulsion;
+
+    for(var i = 0; i < totalBlock; i++){
+      tmp = blocks[i].pos.clone().sub(agent.pos);
+      if(tmp.clone().dot(agent.vel) > 0){  // in front
+
+        tmpProj = tmp.clone().projectOnVector(agent.vel);
+
+        if(tmpProj.length() < blocks[i].r * 2){  // close enough
+
+          repulsion = tmpProj.clone().sub(tmp);
+          var dist = blocks[i].r + agent.halfWidth;
+          if(repulsion.length() < dist) blockForce.copy(repulsion.setLength(100));
+        }
+      }
+    }
+    blockForce.y = 0;
+    if(blockForce.length() > 0) this.status = 'collision avoidance';
+    else this.status = undefined;
+    this.blockForce.copy(blockForce);
+  },
+
+  checkDist: function(){
+    var dist = this.target.clone().sub(this.pos).length();
+    var len = this.vel.length();
+    if(this.status !== 'collision avoidance' && dist < 30){
+      this.vel.setLength(len * 0.95);
+      this.status = 'arrivial';
+    }
+    else if(this.status !== 'collision avoidance'){
+      this.status = 'seek';
+    }
+  },
+
+  neighborCheck: function(otherAgent){
+    var vector = this.pos.clone().sub(otherAgent.pos);
+    var dist = vector.length();
+    var force = new THREE.Vector3();
+    if(dist < this.neighborClose){
+      force.copy(vector.setLength(20 * (this.neighborClose - dist)));
+    }
+    this.neighborForce = force;
+  },
+
+  update: function(dt, steering) {
+
+    this.checkDist();//console.log(this.status);
     // compute force
-    this.force = this.target.clone().sub(this.pos).setLength(this.maxSpeed).sub(this.vel).add(blockForce);
-
+    this.force = this.target.clone().sub(this.pos).setLength(this.maxSpeed).sub(this.vel).add(this.blockForce);
+    if(steering) this.force.add(this.neighborForce);
     // force clamping
     if (this.force.length() > this.maxForce)
       this.force.setLength(this.maxForce);
@@ -40,8 +99,10 @@ var Agent = function(mesh, initPos, h) {
       return true;
     }
     return false;
-  }
+  },
+
 }
+
 
 var Block = function(r, p){
   this.r = r;
