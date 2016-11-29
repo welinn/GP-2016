@@ -43,6 +43,7 @@ body {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r76/three.min.js"></script>
 <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
 <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+<script src="text2D.js"></script>
 <script src='Objects.js'></script>
 <script>
 
@@ -147,6 +148,7 @@ function animate() {
   puck.position.copy(target);
 
   for(var i = 0; i < totalAgent; i++){
+    agents[i].timeCount += dt;
     agents[i].checkNearBlock(agents[i], circle);
     if(steering){
       agents[i].neighbor = [];

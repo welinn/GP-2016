@@ -1,4 +1,7 @@
 var Agent = function(mesh, initPos, h, l, n) {
+  var SpriteText2D = THREE_Text.SpriteText2D;
+  var textAlign = THREE_Text.textAlign;
+
   this.pos = new THREE.Vector3();
   if (initPos) this.pos.copy(initPos);
 
@@ -16,7 +19,16 @@ var Agent = function(mesh, initPos, h, l, n) {
   this.status;
   this.neighbor = [];
   this.neighborClose = n;
+  this.timeCount = 0;
 
+  this.statusText = new SpriteText2D("seek", {
+    align: textAlign.center,
+    font: '10px Courier',
+    fillStyle: '#000000',
+    antialias: true
+  });
+  this.statusText.position.y = 15;
+  this.mesh.add(this.statusText);
 }
 
 Agent.prototype = {
@@ -45,8 +57,13 @@ Agent.prototype = {
       }
     }
     blockForce.y = 0;
-    if(blockForce.length() > 0) this.status = 'collision avoidance';
-    else this.status = undefined;
+    if(blockForce.length() > 0){
+      this.status = 'collision avoidance';
+    }
+    else if(this.timeCount >= 1){
+      this.timeCount = 0;
+      this.status = undefined;
+    }
     this.blockForce.copy(blockForce);
   },
 
@@ -54,10 +71,12 @@ Agent.prototype = {
     var dist = this.target.clone().sub(this.pos).length();
     var len = this.vel.length();
     if(this.status !== 'collision avoidance' && dist < 30){
+      this.timeCount = 0;
       this.vel.setLength(len * 0.95);
       this.status = 'arrivial';
     }
     else if(this.status !== 'collision avoidance'){
+      this.timeCount = 0;
       this.status = 'seek';
     }
   },
@@ -90,7 +109,9 @@ Agent.prototype = {
 
   update: function(dt, steering) {
 
-    this.checkDist();//console.log(this.status);
+    this.statusText.text = this.status;
+
+    this.checkDist();
     // compute force
     this.force = this.target.clone().sub(this.pos).setLength(this.maxSpeed).sub(this.vel).add(this.blockForce);
     if(steering) this.force.add(this.neighborForce);
