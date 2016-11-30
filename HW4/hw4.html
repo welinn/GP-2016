@@ -72,6 +72,17 @@ function init() {
   camera.position.set(0, 300, 400);
   scene.add(camera);
 
+  renderer = new THREE.WebGLRenderer();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x888888);
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  document.body.appendChild(renderer.domElement);
+
+  document.addEventListener('mousedown', onDocumentMouseDown, false);
+  window.addEventListener('resize', onWindowResize, false);
+
+
   var gridXZ = new THREE.GridHelper(planeLen / 2, 10);
   gridXZ.setColors(new THREE.Color(0xff0000), new THREE.Color(0xffffff));
   scene.add(gridXZ);
@@ -87,13 +98,6 @@ function init() {
   steerText.position.set(-planeLen / 3, 20, planeLen / 2);
   scene.add(steerText);
 
-  renderer = new THREE.WebGLRenderer();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setClearColor(0x888888);
-
-  controls = new THREE.OrbitControls(camera, renderer.domElement);
-  document.body.appendChild(renderer.domElement);
-
   raycaster = new THREE.Raycaster();
 
   var plane = new THREE.Mesh (
@@ -103,20 +107,26 @@ function init() {
   plane.rotation.x = -Math.PI/2;
   pickables.push(plane);
 
+  var light = new THREE.PointLight(0xffffff, 5);
+  light.position.set(0, 20, 0);
+  scene.add(light);
 
-  circle.push(new Block(50, new THREE.Vector3(planeLen * 0.25, 0, 0)));
+  var blockMaterial = new THREE.MeshBasicMaterial({
+      transparent : true,
+      map : new THREE.TextureLoader().load('image/block.png'),
+      side: THREE.DoubleSide,});
+  circle.push(new Block(70, new THREE.Vector3(planeLen * 0.25, 0, 0), blockMaterial));
   scene.add(circle[0].mesh);
-
-  circle.push(new Block(30, new THREE.Vector3(-planeLen * 0.25, 0, -planeLen * 0.25)));
+  circle.push(new Block(50, new THREE.Vector3(-planeLen * 0.25, 0, -planeLen * 0.25), blockMaterial));
   scene.add(circle[1].mesh);
-
-  circle.push(new Block(30, new THREE.Vector3(-planeLen * 0.125, 0, planeLen * 0.125)));
+  circle.push(new Block(40, new THREE.Vector3(-planeLen * 0.125, 0, planeLen * 0.25), blockMaterial));
   scene.add(circle[2].mesh);
 
-  //////////////////////
 
   var geometry = new THREE.BoxGeometry(bodyLen, 2, halfWidth * 2);
-  var material = new THREE.MeshNormalMaterial();
+  var material = new THREE.MeshLambertMaterial({
+      color: 0x009922,
+      side: THREE.DoubleSide,});
   var box = new THREE.Mesh(geometry, material);
   target.set(planeLen * 0.25, 0, -planeLen * 0.375);
   for(var i = 0; i < totalAgent; i++){
@@ -129,9 +139,6 @@ function init() {
   }
   puck = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 2, 20), new THREE.MeshNormalMaterial());
   scene.add(puck);
-
-  document.addEventListener('mousedown', onDocumentMouseDown, false);
-  window.addEventListener('resize', onWindowResize, false);
 
 }
 

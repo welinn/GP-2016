@@ -142,13 +142,14 @@ Agent.prototype = {
 }
 
 
-var Block = function(r, p){
+var Block = function(r, p, m){
   this.r = r;
   this.pos = p;
   this.mesh = new THREE.Mesh(
     new THREE.CircleGeometry(r, 32),
-    new THREE.MeshBasicMaterial()
+    m
   );
   this.mesh.position.copy(p);
+  this.mesh.position.y = 0.1;
   this.mesh.rotation.x = -Math.PI * 0.5;
 }
