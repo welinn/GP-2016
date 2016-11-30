@@ -50,14 +50,16 @@ body {
 var camera, scene, renderer, controls;
 var puck, agents = [], halfWidth = 3, bodyLen = 12, totalAgent = 7;
 var circle = [], totalBlock = 3, k = 2;
+var steering = true, neighborClose = 5, steerText;
 var target = new THREE.Vector3();
 var clock = new THREE.Clock();
-var steering = false, neighborClose = 5;
 var mouse = new THREE.Vector2();
 var raycaster, pickables = [], planeLen = 400;
 
 $('.steer').click(function(){
   steering = !steering;
+  if(steering) scene.add(steerText);
+  else scene.remove(steerText);
 });
 
 init();
@@ -73,6 +75,17 @@ function init() {
   var gridXZ = new THREE.GridHelper(planeLen / 2, 10);
   gridXZ.setColors(new THREE.Color(0xff0000), new THREE.Color(0xffffff));
   scene.add(gridXZ);
+
+  var Text2D = THREE_Text.MeshText2D;
+  var textAlign = THREE_Text.textAlign;
+  steerText = new Text2D("steering", {
+    align: textAlign.center,
+    font: '20px Courier',
+    fillStyle: '#123456',
+    antialias: true
+  });
+  steerText.position.set(-planeLen / 3, 20, planeLen / 2);
+  scene.add(steerText);
 
   renderer = new THREE.WebGLRenderer();
   renderer.setSize(window.innerWidth, window.innerHeight);

@@ -1,5 +1,5 @@
 var Agent = function(mesh, initPos, h, l, n) {
-  var SpriteText2D = THREE_Text.SpriteText2D;
+  var SpriteText2D = THREE_Text.SpriteText2D;  // text look at camera (WWWWW((????
   var textAlign = THREE_Text.textAlign;
 
   this.pos = new THREE.Vector3();
@@ -52,7 +52,7 @@ Agent.prototype = {
 
           repulsion = tmpProj.clone().sub(tmp);
           var dist = blocks[i].r + agent.halfWidth;
-          if(repulsion.length() < dist) blockForce.copy(repulsion.setLength(100));
+          if(repulsion.length() < dist) blockForce.copy(repulsion.setLength(150));
         }
       }
     }
@@ -91,19 +91,20 @@ Agent.prototype = {
 
   groupSteer: function(){
 
-    //separation
     var force = new THREE.Vector3();
+    var center = new THREE.Vector3();
+    var direction = new THREE.Vector3();
     for(var i = 0; i < this.neighbor.length; i++){
       var vector = this.pos.clone().sub(this.neighbor[i].pos);
       var dist = vector.length();
-      force.add(vector.setLength(this.neighborClose - dist));
+      force.add(vector.setLength(this.neighborClose - dist));  // separation
+      center.add(this.neighbor[i].pos);                        // cohesion
+      direction.add(this.neighbor[i].vel.clone().normalize()); // alignment
     }
-    this.neighborForce = force.multiplyScalar(40);
-
-    // cohesion, alignment
-
-
-
+    center.multiplyScalar (1 / this.neighbor.length);
+    center.add(this.pos.clone().multiplyScalar (-1)).setLength(2);
+    direction.setLength(10);
+    this.neighborForce = force.multiplyScalar(40).add(center).add(direction);
 
   },
 
