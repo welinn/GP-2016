@@ -48,7 +48,7 @@ Agent.prototype = {
 
         tmpProj = tmp.clone().projectOnVector(agent.vel);
 
-        if(tmpProj.length() < blocks[i].r * 2){  // close enough
+        if(tmpProj.length() < blocks[i].r * 1.7){  // close enough
 
           repulsion = tmpProj.clone().sub(tmp);
           var dist = blocks[i].r + agent.halfWidth;
@@ -97,15 +97,17 @@ Agent.prototype = {
     for(var i = 0; i < this.neighbor.length; i++){
       var vector = this.pos.clone().sub(this.neighbor[i].pos);
       var dist = vector.length();
-      force.add(vector.setLength(this.neighborClose - dist));  // separation
+//      force.add(vector.setLength((this.neighborClose - dist) * 100));  // separation
+      force.add(vector.setLength(100 / dist));                  // separation
       center.add(this.neighbor[i].pos);                        // cohesion
       direction.add(this.neighbor[i].vel.clone().normalize()); // alignment
     }
     center.multiplyScalar (1 / this.neighbor.length);
-    center.add(this.pos.clone().multiplyScalar (-1)).setLength(2);
-    direction.setLength(10);
-    this.neighborForce = force.multiplyScalar(40).add(center).add(direction);
-
+    center.sub(this.pos).setLength(5);
+    direction.setLength(5);
+    this.neighborForce = force.add(center).add(direction);
+    this.neighborForce.y = 0;
+console.log(this.vel.length());
   },
 
   update: function(dt, steering) {
