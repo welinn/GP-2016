@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<title>HW5 Steering in 3-space</title>
+<style>
+body {
+  overflow: hidden;
+}
+#info {
+  position: absolute;
+  top: 0;
+  width: 100%;
+}
+
+.button {
+  border: none;
+  color: white;
+  padding: 1% 1%;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  margin: 10px 2px;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.bomb {
+  background-color: white;
+  opacity: 0.5;
+  color: black; 
+  border: 5px solid #008CBA;
+}
+</style>
+</head>
+
+<body>
+<div id="info">
+  <button class="button bomb">Bomb GO</button>
+</div>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.5.1/dat.gui.min.js'></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r76/three.min.js"></script>
+<script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+<script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+<script src='Objects.js'></script>
+<script>
+
+var camera, scene, renderer, controls;
+var bomb, halfWidth = 6, bodyLen = 33, headLen = 8;
+var circle = [];
+var planeLen = 400, buildingHeigh = 100, buildingWidth = 30;
+var bombInitPos = new THREE.Vector3(-planeLen * 0.45, (bodyLen - headLen) * 0.5, planeLen * 0.45)
+var buildingPos = new THREE.Vector3(planeLen * 0.25, buildingHeigh / 2, -planeLen * 0.375);
+var building;
+var clock = new THREE.Clock();
+//var mouse = new THREE.Vector2(), raycaster, pickables = [];
+var bombGo = false;
+var gc;
+
+$('.bomb').click(function(){
+  bombGo = true;
+});
+
+init();
+animate();
+
+function init() {
+  scene = new THREE.Scene();
+
+  camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 1000);
+  camera.position.set(0, 300, 400);
+  scene.add(camera);
+
+  renderer = new THREE.WebGLRenderer();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x888888);
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  document.body.appendChild(renderer.domElement);
+
+//  document.addEventListener('mousedown', onDocumentMouseDown, false);
+  window.addEventListener('resize', onWindowResize, false);
+
+
+  var gridXZ = new THREE.GridHelper(planeLen / 2, 10);
+  gridXZ.setColors(new THREE.Color(0xff0000), new THREE.Color(0xffffff));
+  scene.add(gridXZ);
+/*
+  raycaster = new THREE.Raycaster();
+
+  var plane = new THREE.Mesh (
+    new THREE.PlaneGeometry(planeLen, planeLen),
+    new THREE.MeshBasicMaterial({visible:false}));
+  scene.add (plane);
+  plane.rotation.x = -Math.PI/2;
+  pickables.push(plane);
+*/
+  var light = new THREE.PointLight(0xffffff, 5);
+  light.position.set(0, 20, 0);
+  scene.add(light);
+
+  var blockMaterial = new THREE.MeshBasicMaterial({});
+  var total = 9;
+  circle.push(new Block(10, new THREE.Vector3(planeLen * 0.1, 50, -planeLen * 0.25), blockMaterial));
+  circle.push(new Block(10, new THREE.Vector3(planeLen * 0.2, 50, -planeLen * 0.25), blockMaterial));
+  circle.push(new Block(10, new THREE.Vector3(planeLen * 0.3, 50, -planeLen * 0.25), blockMaterial));
+
+  circle.push(new Block(15, new THREE.Vector3(planeLen * 0.1, 80, -planeLen * 0.25), blockMaterial));
+  circle.push(new Block(15, new THREE.Vector3(planeLen * 0.2, 80, -planeLen * 0.25), blockMaterial));
+  circle.push(new Block(15, new THREE.Vector3(planeLen * 0.3, 80, -planeLen * 0.25), blockMaterial));
+
+  circle.push(new Block(15, new THREE.Vector3(planeLen * 0.1, 120, -planeLen * 0.25), blockMaterial));
+  circle.push(new Block(15, new THREE.Vector3(planeLen * 0.2, 120, -planeLen * 0.25), blockMaterial));
+  circle.push(new Block(15, new THREE.Vector3(planeLen * 0.3, 120, -planeLen * 0.25), blockMaterial));
+
+  for(var i = 0; i < total; i++)
+    scene.add(circle[i].mesh);
+
+  var material = new THREE.MeshLambertMaterial({
+      color: 0x009922,});
+  var mesh = new THREE.Mesh(
+    new THREE.CylinderGeometry(halfWidth, halfWidth, bodyLen - headLen, 32),
+    material);
+  var meshHead = new THREE.Mesh(
+    new THREE.CylinderGeometry(0, halfWidth, headLen, 32),
+    material);
+  meshHead.position.y = bodyLen * 0.5;
+  mesh.add(meshHead);
+  mesh.position.y = (bodyLen - headLen) * 0.5;
+
+  bomb = new Bomb(
+    mesh.clone(),
+    buildingWidth / 2,
+    halfWidth, bodyLen,
+    bombInitPos
+  );
+  scene.add(bomb.mesh);
+  bomb.setTarget(buildingPos);
+
+  building = new THREE.Mesh(
+    new THREE.BoxGeometry(buildingWidth, buildingHeigh, buildingWidth),
+    new THREE.MeshNormalMaterial());
+  building.position.copy(buildingPos);
+  scene.add(building);
+
+  var gui = new dat.GUI();
+  initGc();
+//  gui.remember(gc);
+
+  var bombControl = gui.addFolder('BombControl');
+  bombControl.open();
+  var pitch = bombControl.add(gc, 'Pitch', -Math.PI * 0.5, Math.PI * 0.5);
+  var yaw = bombControl.add(gc, 'Yaw', 0, Math.PI * 2);
+
+  pitch.onChange(function(value) {
+    bomb.mesh.rotation.x = value;
+  });
+
+  yaw.onChange(function(value) {
+    bomb.mesh.rotation.z = value;
+  });
+
+}
+
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function initGc(){
+  gc = {
+    Pitch: 0.1,
+    Yaw: 0.1,
+  }
+}
+/*
+function onDocumentMouseDown(event) {
+
+  event.preventDefault();
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, camera);
+  var intersects = raycaster.intersectObjects(pickables);
+  if (intersects.length > 0) {
+    buildingPos.copy (intersects[0].point);
+  }
+}
+*/
+function animate() {
+
+  if(bombGo){
+    var dt = clock.getDelta();
+    var catched;
+
+    bomb.checkNearBlock(bomb, circle);
+
+    catched = bomb.update(dt);
+    if(catched){  // reset
+      bomb.vel.set(0, 0, 0);
+      bomb.pos.copy(bomb.initPos);
+      bombGo = false;
+    }
+    bomb.setTarget(buildingPos);
+  }
+  controls.update();
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+}
+
+</script>
+</body>
+</html>
