@@ -47,12 +47,13 @@ body {
 <script>
 
 var camera, scene, renderer, controls;
+var planeLen = 400;
 var bomb, halfWidth = 6, bodyLen = 33, headLen = 8;
-var circle = [];
-var planeLen = 400, buildingHeigh = 100, buildingWidth = 30;
-var bombInitPos = new THREE.Vector3(-planeLen * 0.45, (bodyLen - headLen) * 0.5, planeLen * 0.45)
+var bombInitPos = new THREE.Vector3(-planeLen * 0.45, (bodyLen - headLen) * 0.5, planeLen * 0.45);
+var balloon = [];
+var buildingHeigh = 100, buildingWidth = 30;
 var buildingPos = new THREE.Vector3(planeLen * 0.25, buildingHeigh / 2, -planeLen * 0.375);
-var building;
+var building, buildingPoint = [];
 var clock = new THREE.Clock();
 //var mouse = new THREE.Vector2(), raycaster, pickables = [];
 var bombGo = false;
@@ -102,20 +103,20 @@ function init() {
 
   var blockMaterial = new THREE.MeshBasicMaterial({});
   var total = 9;
-  circle.push(new Block(10, new THREE.Vector3(planeLen * 0.1, 50, -planeLen * 0.25), blockMaterial));
-  circle.push(new Block(10, new THREE.Vector3(planeLen * 0.2, 50, -planeLen * 0.25), blockMaterial));
-  circle.push(new Block(10, new THREE.Vector3(planeLen * 0.3, 50, -planeLen * 0.25), blockMaterial));
+  balloon.push(new Block(10, new THREE.Vector3(planeLen * 0.1, 50, -planeLen * 0.25), blockMaterial));
+  balloon.push(new Block(10, new THREE.Vector3(planeLen * 0.2, 50, -planeLen * 0.25), blockMaterial));
+  balloon.push(new Block(10, new THREE.Vector3(planeLen * 0.3, 50, -planeLen * 0.25), blockMaterial));
 
-  circle.push(new Block(15, new THREE.Vector3(planeLen * 0.1, 80, -planeLen * 0.25), blockMaterial));
-  circle.push(new Block(15, new THREE.Vector3(planeLen * 0.2, 80, -planeLen * 0.25), blockMaterial));
-  circle.push(new Block(15, new THREE.Vector3(planeLen * 0.3, 80, -planeLen * 0.25), blockMaterial));
+  balloon.push(new Block(15, new THREE.Vector3(planeLen * 0.1, 80, -planeLen * 0.25), blockMaterial));
+  balloon.push(new Block(15, new THREE.Vector3(planeLen * 0.2, 80, -planeLen * 0.25), blockMaterial));
+  balloon.push(new Block(15, new THREE.Vector3(planeLen * 0.3, 80, -planeLen * 0.25), blockMaterial));
 
-  circle.push(new Block(15, new THREE.Vector3(planeLen * 0.1, 120, -planeLen * 0.25), blockMaterial));
-  circle.push(new Block(15, new THREE.Vector3(planeLen * 0.2, 120, -planeLen * 0.25), blockMaterial));
-  circle.push(new Block(15, new THREE.Vector3(planeLen * 0.3, 120, -planeLen * 0.25), blockMaterial));
+  balloon.push(new Block(15, new THREE.Vector3(planeLen * 0.1, 120, -planeLen * 0.25), blockMaterial));
+  balloon.push(new Block(15, new THREE.Vector3(planeLen * 0.2, 120, -planeLen * 0.25), blockMaterial));
+  balloon.push(new Block(15, new THREE.Vector3(planeLen * 0.3, 120, -planeLen * 0.25), blockMaterial));
 
   for(var i = 0; i < total; i++)
-    scene.add(circle[i].mesh);
+    scene.add(balloon[i].mesh);
 
   var material = new THREE.MeshLambertMaterial({
       color: 0x009922,});
@@ -132,17 +133,21 @@ function init() {
   bomb = new Bomb(
     mesh.clone(),
     buildingWidth / 2,
-    halfWidth, bodyLen,
+    halfWidth, bodyLen, headLen,
     bombInitPos
   );
+  bomb.init(buildingPos);
   scene.add(bomb.mesh);
-  bomb.setTarget(buildingPos);
+
 
   building = new THREE.Mesh(
     new THREE.BoxGeometry(buildingWidth, buildingHeigh, buildingWidth),
     new THREE.MeshNormalMaterial());
   building.position.copy(buildingPos);
   scene.add(building);
+
+  createBuildingPoint();
+
 
   var gui = new dat.GUI();
   initGc();
@@ -169,11 +174,39 @@ function onWindowResize() {
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
+function createBuildingPoint(){
+  var halfH = buildingHeigh * 0.5;
+  var helfW = buildingWidth * 0.5;
+  var x = buildingPos.x, y = buildingPos.y, z = buildingPos.z;
+  buildingPoint.push(x - helfW);
+  buildingPoint.push(x + helfW);
+  buildingPoint.push(y - halfH);
+  buildingPoint.push(y + halfH);
+  buildingPoint.push(z - helfW);
+  buildingPoint.push(z + helfW);
+
+}
+
 function initGc(){
   gc = {
     Pitch: 0.1,
     Yaw: 0.1,
   }
+}
+
+function collisionCheck(bombHead, points, balloon){
+  if(bombHead.x >= points[0] && bombHead.x <= points[1] &&
+     bombHead.y >= points[2] && bombHead.y <= points[3] &&
+     bombHead.z >= points[4] && bombHead.z <= points[5]){
+    return true;
+  }
+
+  for(var i = 0; i < balloon.length; i++){
+    if(balloon[i].pos.clone().sub(bombHead).length() < balloon[i].r){
+      return true;
+    }
+  }
+  return false;
 }
 /*
 function onDocumentMouseDown(event) {
@@ -192,18 +225,21 @@ function onDocumentMouseDown(event) {
 function animate() {
 
   if(bombGo){
+
     var dt = clock.getDelta();
-    var catched;
+    var collision;
 
-    bomb.checkNearBlock(bomb, circle);
+    bomb.checkNearBlock(bomb, balloon);
 
-    catched = bomb.update(dt);
-    if(catched){  // reset
-      bomb.vel.set(0, 0, 0);
-      bomb.pos.copy(bomb.initPos);
+    bomb.update(dt);
+
+    collision = collisionCheck(bomb.headPos, buildingPoint, balloon);
+//console.log(collision);
+    if(collision){
+      scene.remove(bomb);
+
       bombGo = false;
     }
-    bomb.setTarget(buildingPos);
   }
   controls.update();
   requestAnimationFrame(animate);

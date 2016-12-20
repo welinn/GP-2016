@@ -1,10 +1,12 @@
-var Bomb = function(mesh, targetHalfWidth, h, l, initPos) {
+var Bomb = function(mesh, targetHalfWidth, h, bodyLen, headLen, initPos) {
 
   this.pos = new THREE.Vector3();
+  this.headPos = new THREE.Vector3(0, bodyLen * 0.5 + headLen, 0);
   this.initPos = new THREE.Vector3();
 
   if (initPos){
     this.pos.copy(initPos);
+    this.headPos.add(initPos);
     this.initPos.copy(initPos);
   }
 
@@ -14,19 +16,19 @@ var Bomb = function(mesh, targetHalfWidth, h, l, initPos) {
   this.targetHalfWidth = targetHalfWidth;
   this.blockForce = new THREE.Vector3();
   this.mesh = mesh;
-  this.mesh.position.copy(this.pos);
   this.maxSpeed = 60;
   this.maxForce = 60;
   this.halfWidth = h;
-  this.bodyLen = l;
+//  this.bodyLen = bodyLen;
   this.seek = false;
 
 }
 
 Bomb.prototype = {
 
-  setTarget: function(target) {
+  init: function(target){
     this.target.copy(target);
+    this.mesh.position.copy(this.pos);
   },
 
   checkNearBlock: function(agent, blocks){
@@ -78,14 +80,15 @@ Bomb.prototype = {
 
       }
       this.mesh.position.copy(this.pos);
+
       this.mesh.rotation.z = -angleZ;
       this.mesh.rotation.x = -angleX;
-
+/*
       // catch handling
       if (this.pos.distanceTo(this.target) < this.bodyLen) {
         return true;
       }
-      
+*/
     }
     else{
       this.vel = this.mesh.localToWorld(new THREE.Vector3(0, 1, 0)).normalize()
@@ -94,7 +97,7 @@ Bomb.prototype = {
       this.pos.add(this.vel.clone().multiplyScalar(dt));
       this.mesh.position.copy(this.pos);
     }
-    return false;
+//    return false;
   },
 
 }
