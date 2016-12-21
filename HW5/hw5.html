@@ -41,6 +41,7 @@ body {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r76/three.min.js"></script>
 <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
 <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+<script src="https://threejs.org/examples/js/ParametricGeometries.js"></script>
 <script src='Objects.js'></script>
 <script>
 
@@ -51,6 +52,8 @@ var bomb, halfWidth = 6, bodyLen = 33, headLen = 8;
 var bombInitPos = new THREE.Vector3(-planeLen * 0.4, 0, planeLen * 0.4);
 
 var balloon = [];
+var abm;
+
 var buildingHeigh = 100, buildingWidth = 30;
 var buildingPos = new THREE.Vector3(planeLen * 0.25, buildingHeigh / 2, -planeLen * 0.375);
 var building, buildingPoint = [];
@@ -105,7 +108,9 @@ function init() {
   balloon.push(new Block(15, new THREE.Vector3(planeLen * 0.3, 120, -planeLen * 0.25), blockMaterial));
   for(var i = 0; i < total; i++)
     scene.add(balloon[i].mesh);
-	
+
+  abm = new ABM();
+  scene.add(abm);
   
   bomb = new Bomb(
     halfWidth, bodyLen, headLen,

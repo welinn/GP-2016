@@ -161,6 +161,28 @@ Car.prototype = Object.assign(Object.create(THREE.Object3D.prototype), {
   }
 });
 
+var ABM = function(){
+  THREE.Object3D.call(this);
+
+  var body = new THREE.Mesh(
+    new THREE.ParametricGeometry(THREE.ParametricGeometries.klein, 10, 20),
+    new THREE.MeshLambertMaterial( { color: 0xaaff00 } )
+  );
+  body.geometry.scale(2, 2, 3);
+  body.rotation.z = Math.PI * 0.5;
+
+  this.add(body);
+
+}
+
+ABM.prototype = Object.assign(Object.create(THREE.Object3D.prototype), {
+  constructor: ABM,
+  
+
+//dt = bomb.pos.sub(this.position) / this.vel.sub(bomb.vel)
+
+});
+
 var Block = function(r, p, m){
   this.r = r;
   this.pos = p;
