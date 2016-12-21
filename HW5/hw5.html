@@ -12,7 +12,6 @@ body {
   top: 0;
   width: 100%;
 }
-
 .button {
   border: none;
   color: white;
@@ -25,7 +24,6 @@ body {
   cursor: pointer;
   border-radius: 8px;
 }
-
 .bomb {
   background-color: white;
   opacity: 0.5;
@@ -48,19 +46,27 @@ body {
 
 var camera, scene, renderer, controls;
 var planeLen = 400;
+
 var bomb, halfWidth = 6, bodyLen = 33, headLen = 8;
-var bombInitPos = new THREE.Vector3(-planeLen * 0.45, (bodyLen - headLen) * 0.5, planeLen * 0.45);
+var bombInitPos = new THREE.Vector3(-planeLen * 0.4, 0, planeLen * 0.4);
+
 var balloon = [];
 var buildingHeigh = 100, buildingWidth = 30;
 var buildingPos = new THREE.Vector3(planeLen * 0.25, buildingHeigh / 2, -planeLen * 0.375);
 var building, buildingPoint = [];
+
+var car;
 var clock = new THREE.Clock();
-//var mouse = new THREE.Vector2(), raycaster, pickables = [];
 var bombGo = false;
 var gc;
 
 $('.bomb').click(function(){
-  bombGo = true;
+  if(!car.shoot){
+    car.shooting();
+    scene.add(bomb);
+  }
+  //bombGo = true;
+  //bombGo = !bombGo;
 });
 
 init();
@@ -68,104 +74,71 @@ animate();
 
 function init() {
   scene = new THREE.Scene();
-
   camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 1000);
   camera.position.set(0, 300, 400);
   scene.add(camera);
-
   renderer = new THREE.WebGLRenderer();
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setClearColor(0x888888);
-
   controls = new THREE.OrbitControls(camera, renderer.domElement);
   document.body.appendChild(renderer.domElement);
-
-//  document.addEventListener('mousedown', onDocumentMouseDown, false);
   window.addEventListener('resize', onWindowResize, false);
-
-
+  
   var gridXZ = new THREE.GridHelper(planeLen / 2, 10);
   gridXZ.setColors(new THREE.Color(0xff0000), new THREE.Color(0xffffff));
   scene.add(gridXZ);
-/*
-  raycaster = new THREE.Raycaster();
 
-  var plane = new THREE.Mesh (
-    new THREE.PlaneGeometry(planeLen, planeLen),
-    new THREE.MeshBasicMaterial({visible:false}));
-  scene.add (plane);
-  plane.rotation.x = -Math.PI/2;
-  pickables.push(plane);
-*/
   var light = new THREE.PointLight(0xffffff, 5);
   light.position.set(0, 20, 0);
   scene.add(light);
-
+  
   var blockMaterial = new THREE.MeshBasicMaterial({});
   var total = 9;
   balloon.push(new Block(10, new THREE.Vector3(planeLen * 0.1, 50, -planeLen * 0.25), blockMaterial));
   balloon.push(new Block(10, new THREE.Vector3(planeLen * 0.2, 50, -planeLen * 0.25), blockMaterial));
   balloon.push(new Block(10, new THREE.Vector3(planeLen * 0.3, 50, -planeLen * 0.25), blockMaterial));
-
   balloon.push(new Block(15, new THREE.Vector3(planeLen * 0.1, 80, -planeLen * 0.25), blockMaterial));
   balloon.push(new Block(15, new THREE.Vector3(planeLen * 0.2, 80, -planeLen * 0.25), blockMaterial));
   balloon.push(new Block(15, new THREE.Vector3(planeLen * 0.3, 80, -planeLen * 0.25), blockMaterial));
-
   balloon.push(new Block(15, new THREE.Vector3(planeLen * 0.1, 120, -planeLen * 0.25), blockMaterial));
   balloon.push(new Block(15, new THREE.Vector3(planeLen * 0.2, 120, -planeLen * 0.25), blockMaterial));
   balloon.push(new Block(15, new THREE.Vector3(planeLen * 0.3, 120, -planeLen * 0.25), blockMaterial));
-
   for(var i = 0; i < total; i++)
     scene.add(balloon[i].mesh);
-
-  var material = new THREE.MeshLambertMaterial({
-      color: 0x009922,});
-  var mesh = new THREE.Mesh(
-    new THREE.CylinderGeometry(halfWidth, halfWidth, bodyLen - headLen, 32),
-    material);
-  var meshHead = new THREE.Mesh(
-    new THREE.CylinderGeometry(0, halfWidth, headLen, 32),
-    material);
-  meshHead.position.y = bodyLen * 0.5;
-  mesh.add(meshHead);
-  mesh.position.y = (bodyLen - headLen) * 0.5;
-
+	
+  
   bomb = new Bomb(
-    mesh.clone(),
-    buildingWidth / 2,
     halfWidth, bodyLen, headLen,
     bombInitPos
   );
-  bomb.init(buildingPos);
-  scene.add(bomb.mesh);
-
-
+  var target_building = buildingPos.clone();
+  target_building.y = buildingHeigh;
+  bomb.init(target_building);
+//  scene.add(bomb);
+  
+  car = new Car(bomb, halfWidth, bodyLen);
+  scene.add(car);
+  
   building = new THREE.Mesh(
     new THREE.BoxGeometry(buildingWidth, buildingHeigh, buildingWidth),
     new THREE.MeshNormalMaterial());
   building.position.copy(buildingPos);
   scene.add(building);
-
   createBuildingPoint();
-
-
+  
   var gui = new dat.GUI();
   initGc();
 //  gui.remember(gc);
-
   var bombControl = gui.addFolder('BombControl');
   bombControl.open();
-  var pitch = bombControl.add(gc, 'Pitch', -Math.PI * 0.5, Math.PI * 0.5);
-  var yaw = bombControl.add(gc, 'Yaw', 0, Math.PI * 2);
-
+  var pitch = bombControl.add(gc, 'Pitch', 0, Math.PI * 0.5);
+  var yaw = bombControl.add(gc, 'Yaw', -Math.PI * 0.5, Math.PI * 0.5);
   pitch.onChange(function(value) {
-    bomb.mesh.rotation.x = value;
+    car.rotation.x = -value;
   });
-
   yaw.onChange(function(value) {
-    bomb.mesh.rotation.z = value;
+    car.rotation.z = -value;
   });
-
 }
 
 function onWindowResize() {
@@ -184,68 +157,53 @@ function createBuildingPoint(){
   buildingPoint.push(y + halfH);
   buildingPoint.push(z - helfW);
   buildingPoint.push(z + helfW);
-
 }
 
 function initGc(){
   gc = {
-    Pitch: 0.1,
-    Yaw: 0.1,
+    Pitch: 0.9,
+    Yaw: 0.5,
   }
+  car.rotation.x = -0.9;
+  car.rotation.z = -0.5;
 }
 
 function collisionCheck(bombHead, points, balloon){
   if(bombHead.x >= points[0] && bombHead.x <= points[1] &&
      bombHead.y >= points[2] && bombHead.y <= points[3] &&
      bombHead.z >= points[4] && bombHead.z <= points[5]){
+    scene.remove(building);
     return true;
   }
-
   for(var i = 0; i < balloon.length; i++){
     if(balloon[i].pos.clone().sub(bombHead).length() < balloon[i].r){
+      scene.remove(balloon[i].mesh);
       return true;
     }
   }
   return false;
 }
-/*
-function onDocumentMouseDown(event) {
 
-  event.preventDefault();
-  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-  raycaster.setFromCamera(mouse, camera);
-  var intersects = raycaster.intersectObjects(pickables);
-  if (intersects.length > 0) {
-    buildingPos.copy (intersects[0].point);
-  }
-}
-*/
 function animate() {
-
-  if(bombGo){
-
+  if(car.shoot){
     var dt = clock.getDelta();
     var collision;
+	
+    bomb.checkNearBlock(balloon);
+    bomb.update(dt, buildingHeigh * 2);
+	var headPos = bomb.localToWorld(new THREE.Vector3(0, bomb.bodyLen, 0));
+    collision = collisionCheck(headPos, buildingPoint, balloon);
 
-    bomb.checkNearBlock(bomb, balloon);
-
-    bomb.update(dt);
-
-    collision = collisionCheck(bomb.headPos, buildingPoint, balloon);
-//console.log(collision);
+    if(bomb.position.clone().sub(bomb.target).length() < 100) bomb.target.y = 0;
     if(collision){
       scene.remove(bomb);
-
-      bombGo = false;
+      car.shoot = false;
     }
   }
   controls.update();
   requestAnimationFrame(animate);
   renderer.render(scene, camera);
 }
-
 </script>
 </body>
 </html>
