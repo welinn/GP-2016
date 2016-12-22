@@ -1,8 +1,11 @@
-var Bomb = function(halfWidth, bodyLen, headLen, initPos) {
+var Bomb = function(time, halfWidth, bodyLen, headLen, initPos) {
   
   THREE.Object3D.call(this);
 
-  var material = new THREE.MeshLambertMaterial({color: 0x009922});
+  var material = new THREE.MeshLambertMaterial({
+    color: 0x009922,
+    transparent: true
+  });
   var mesh = new THREE.Mesh(
     new THREE.CylinderGeometry(halfWidth, halfWidth, bodyLen - headLen, 32),
     material);
@@ -14,8 +17,8 @@ var Bomb = function(halfWidth, bodyLen, headLen, initPos) {
   mesh.position.y = (bodyLen - headLen) * 0.5;
 
   this.add(mesh);
+  this.mesh = mesh;
   this.pos = new THREE.Vector3();
-//  this.initPos = new THREE.Vector3();
   this.vel = new THREE.Vector3();
   this.force = new THREE.Vector3();
   this.target = new THREE.Vector3();
@@ -25,10 +28,11 @@ var Bomb = function(halfWidth, bodyLen, headLen, initPos) {
   this.halfWidth = halfWidth;
   this.bodyLen = bodyLen;
   this.seek = false;
-  
+  this.time = time;
+  this.disappear = false;
+
   if(initPos){
     this.pos.copy(initPos);
-//    this.initPos.copy(initPos);
   }
 }
 
@@ -38,7 +42,6 @@ Bomb.prototype = Object.assign(Object.create(THREE.Object3D.prototype), {
   
   init: function(target){
     this.target.copy(target);
-//    this.position.copy(this.pos);
 	this.vel.y = 60;
   },
 
@@ -163,15 +166,28 @@ Car.prototype = Object.assign(Object.create(THREE.Object3D.prototype), {
 
 var ABM = function(){
   THREE.Object3D.call(this);
+  
+  var material = new THREE.MeshLambertMaterial({
+    color: 0xaaff00,
+    transparent: true,
+  });
 
   var body = new THREE.Mesh(
     new THREE.ParametricGeometry(THREE.ParametricGeometries.klein, 10, 20),
-    new THREE.MeshLambertMaterial( { color: 0xaaff00 } )
+    material
   );
   body.geometry.scale(2, 2, 3);
   body.rotation.z = Math.PI * 0.5;
 
+  var fly = new THREE.Mesh(
+    new THREE.BoxGeometry(3, 50, 10),
+    material
+  );
+  body.add(fly);
+
+
   this.add(body);
+  this.halfLen = 24;
 
 }
 
