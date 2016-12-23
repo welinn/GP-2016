@@ -1,4 +1,4 @@
-var Bomb = function(time, halfWidth, bodyLen, headLen, initPos) {
+var Bomb = function(halfWidth, bodyLen, headLen) {
   
   THREE.Object3D.call(this);
 
@@ -20,6 +20,7 @@ var Bomb = function(time, halfWidth, bodyLen, headLen, initPos) {
   this.mesh = mesh;
   this.pos = new THREE.Vector3();
   this.vel = new THREE.Vector3();
+  this.posNdtVel = new THREE.Vector3();
   this.force = new THREE.Vector3();
   this.target = new THREE.Vector3();
   this.blockForce = new THREE.Vector3();
@@ -27,22 +28,29 @@ var Bomb = function(time, halfWidth, bodyLen, headLen, initPos) {
   this.maxForce = 60;
   this.halfWidth = halfWidth;
   this.bodyLen = bodyLen;
-  this.seek = false;
-  this.time = time;
-  this.disappear = false;
+  this.seek;
+  this.seekDist;
+  this.time;
+  this.disappear;
+  this.hit;
 
-  if(initPos){
-    this.pos.copy(initPos);
-  }
 }
 
 Bomb.prototype = Object.assign(Object.create(THREE.Object3D.prototype), {
 
   constructor: Bomb,
   
-  init: function(target){
+  init: function(target, seekDist, time, initPos){
     this.target.copy(target);
+    this.seek = false;
+    this.seekDist = seekDist;
+    this.time = time;
 	this.vel.y = 60;
+    this.disappear = false;
+    this.hit = false;
+    if(initPos){
+      this.pos.copy(initPos);
+    }
   },
 
   checkNearBlock: function(blocks){
@@ -60,8 +68,8 @@ Bomb.prototype = Object.assign(Object.create(THREE.Object3D.prototype), {
 
         tmpProj = tmp.clone().projectOnVector(this.vel);
         var dist = this.pos.clone().sub(blocks[i].pos).length();
-        if(dist < blocks[i].r * 3.5){  // close enough
-
+        if(dist < blocks[i].r * 3){  // close enough
+          this.seek = true;
           repulsion = tmpProj.clone().sub(tmp);
           blockForce.add(repulsion.setLength(100));
 
@@ -74,11 +82,13 @@ Bomb.prototype = Object.assign(Object.create(THREE.Object3D.prototype), {
 
   update: function(dt, height) {
 
+    this.force = this.blockForce;
+
     if(this.position.y > height || this.seek){
       this.seek = true;
 
       // compute force
-      this.force = this.target.clone().sub(this.pos).setLength(this.maxSpeed).sub(this.vel).add(this.blockForce);
+      this.force.add(this.target.clone().sub(this.pos).setLength(this.maxSpeed).sub(this.vel));
 
       // force clamping
       if (this.force.length() > this.maxForce)
@@ -87,14 +97,22 @@ Bomb.prototype = Object.assign(Object.create(THREE.Object3D.prototype), {
     }
 
     else{
+      //if(this.pos.clone().sub(this.target).length() > 300) this.seek = true;
+      if (this.force.length() > this.maxForce)
+        this.force.setLength(this.maxForce);
+
       var len = this.vel.length();
-      this.vel = this.localToWorld(new THREE.Vector3(0, 1, 0)).sub(this.localToWorld(new THREE.Vector3())).normalize().setLength(len);	
+      this.vel = this.localToWorld(new THREE.Vector3(0, 1, 0)).sub(this.localToWorld(new THREE.Vector3())).normalize().setLength(len).add(this.force.clone().multiplyScalar(dt));
     }
 	
     // velocity clamping
     if (this.vel.length() > this.maxSpeed)
       this.vel.setLength(this.maxSpeed);
+    
+    this.posNdtVel.copy(this.pos);
+    this.posNdtVel.add(this.vel.clone().multiplyScalar(dt * 100));
     this.pos.add(this.vel.clone().multiplyScalar(dt));
+
 
     this.position.copy(this.pos);
 
@@ -180,7 +198,7 @@ var ABM = function(){
   body.rotation.z = Math.PI * 0.5;
 
   var fly = new THREE.Mesh(
-    new THREE.BoxGeometry(3, 50, 10),
+    new THREE.BoxGeometry(3, 48, 10),
     material
   );
   body.add(fly);
@@ -188,14 +206,62 @@ var ABM = function(){
 
   this.add(body);
   this.halfLen = 24;
-
+//  this.pos = new THREE.Vector3();
+  this.position.set(150, 20, -70);
+  this.vel = new THREE.Vector3(-1, 1, -1).setLength(60);
+  this.fly = false;
+  this.force = new THREE.Vector3();
+  this.maxSpeed = 80;
+  this.maxForce = 80;
 }
 
 ABM.prototype = Object.assign(Object.create(THREE.Object3D.prototype), {
   constructor: ABM,
-  
+  update: function(dt, headPos, bomb){
 
-//dt = bomb.pos.sub(this.position) / this.vel.sub(bomb.vel)
+  this.force = bomb.posNdtVel.clone().sub(this.position).setLength(this.maxForce).sub(this.vel);
+
+    if (this.force.length() > this.maxForce)
+      this.force.setLength(this.maxForce);
+    this.vel.add(this.force.clone().multiplyScalar(dt));
+    
+    if (this.vel.length() > this.maxSpeed)
+      this.vel.setLength(this.maxSpeed);
+    this.position.add(this.vel.clone().multiplyScalar(dt));
+
+
+    var abmCenter = this.localToWorld(new THREE.Vector3());
+/*
+    var localDir = this.localToWorld(new THREE.Vector3(0, 0, 1)).sub(abmCenter).normalize();
+    var newDir = bomb.posNdtVel.clone().sub(abmCenter).normalize();
+    var angle = localDir.angleTo(newDir);
+    var axis = localDir.clone().cross(newDir).normalize();
+    this.rotateOnAxis (axis, angle);
+    this.rotation.z = 0;*/
+
+/*
+    var axisY = this.localToWorld(new THREE.Vector3(0, 1, 0)).sub(abmCenter);
+    var axisZ = bomb.posNdtVel.clone().sub(abmCenter);
+    var axisX = axisY.clone().cross(axisZ);
+    var m = new THREE.Matrix4();
+    m.makeBasis(axisX, axisY, axisZ);
+
+    this.rotation.setFromRotationMatrix(m);
+    this.rotation.z = 0;
+*/
+
+    var quaternion = new THREE.Quaternion();
+    var localDir = new THREE.Vector3(0, 0, 1);
+    var newDir = bomb.posNdtVel.clone().sub(abmCenter).normalize();
+    var angle = localDir.angleTo(newDir);
+    var axis = new THREE.Vector3();
+    axis.crossVectors (localDir, this.vel).normalize();
+    quaternion.setFromAxisAngle (axis,angle);
+    this.quaternion.copy (quaternion);
+    this.rotation.z = 0;
+
+  }
+
 
 });
 
