@@ -97,7 +97,6 @@ Bomb.prototype = Object.assign(Object.create(THREE.Object3D.prototype), {
     }
 
     else{
-      //if(this.pos.clone().sub(this.target).length() > 300) this.seek = true;
       if (this.force.length() > this.maxForce)
         this.force.setLength(this.maxForce);
 
@@ -169,6 +168,7 @@ var Car = function(bomb, halfWidth, bodyLen){
   this.bomb = bomb;
   this.add(bomb);
   this.add(mesh);
+  this.rotation.reorder('YXZ');
 
 }
 
@@ -203,23 +203,21 @@ var ABM = function(){
   );
   body.add(fly);
 
-
   this.add(body);
   this.halfLen = 24;
-//  this.pos = new THREE.Vector3();
-  this.position.set(150, 20, -70);
-  this.vel = new THREE.Vector3(-1, 1, -1).setLength(60);
+  this.vel = new THREE.Vector3(1, 1, 1).setLength(60);
   this.fly = false;
   this.force = new THREE.Vector3();
   this.maxSpeed = 80;
   this.maxForce = 80;
+  this.rotation.reorder('YXZ');
 }
 
 ABM.prototype = Object.assign(Object.create(THREE.Object3D.prototype), {
   constructor: ABM,
   update: function(dt, headPos, bomb){
 
-  this.force = bomb.posNdtVel.clone().sub(this.position).setLength(this.maxForce).sub(this.vel);
+    this.force = bomb.posNdtVel.clone().sub(this.position).setLength(this.maxForce).sub(this.vel);
 
     if (this.force.length() > this.maxForce)
       this.force.setLength(this.maxForce);
@@ -239,26 +237,16 @@ ABM.prototype = Object.assign(Object.create(THREE.Object3D.prototype), {
     this.rotateOnAxis (axis, angle);
     this.rotation.z = 0;*/
 
-/*
-    var axisY = this.localToWorld(new THREE.Vector3(0, 1, 0)).sub(abmCenter);
-    var axisZ = bomb.posNdtVel.clone().sub(abmCenter);
-    var axisX = axisY.clone().cross(axisZ);
+
+    //var axisX = this.localToWorld(new THREE.Vector3(1, 0, 0)).sub(abmCenter).normalize();
+    var axisX = this.localToWorld(new THREE.Vector3(0, 0, 1)).clone().cross(this.vel).normalize();
+    var axisZ = this.vel.clone().normalize();
+    var axisY = axisX.clone().cross(axisZ);
     var m = new THREE.Matrix4();
     m.makeBasis(axisX, axisY, axisZ);
 
     this.rotation.setFromRotationMatrix(m);
-    this.rotation.z = 0;
-*/
-
-    var quaternion = new THREE.Quaternion();
-    var localDir = new THREE.Vector3(0, 0, 1);
-    var newDir = bomb.posNdtVel.clone().sub(abmCenter).normalize();
-    var angle = localDir.angleTo(newDir);
-    var axis = new THREE.Vector3();
-    axis.crossVectors (localDir, this.vel).normalize();
-    quaternion.setFromAxisAngle (axis,angle);
-    this.quaternion.copy (quaternion);
-    this.rotation.z = 0;
+    this.rotation.z = 0; 
 
   }
 

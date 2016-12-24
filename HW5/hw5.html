@@ -338,6 +338,7 @@ function init() {
     scene.add(balloon[i].mesh);
 
   abm = new ABM();
+  abm.position.set(-150, 10, -150);
   scene.add(abm);
   
   bomb = new Bomb(
@@ -427,17 +428,29 @@ function initGc(){
 }
 
 function collisionCheck(bombHead, points, balloon){
+
   if(bombHead.x >= points[0] && bombHead.x <= points[1] &&
      bombHead.y >= points[2] && bombHead.y <= points[3] &&
      bombHead.z >= points[4] && bombHead.z <= points[5]){
     bomb.hit = true;
     return true;
   }
-  if(abm.position.clone().sub(bombHead).length() < abm.halfLen){
+
+  var y = bomb.bodyLen * 0.5;
+  var minLen = bomb.halfWidth + abm.halfLen;
+  var minLenY = abm.halfLen + y;
+  var bombCenter = bomb.localToWorld(new THREE.Vector3(0, y, 0));
+  var vec = abm.position.clone().sub(bombCenter);
+  var projX = bomb.localToWorld(new THREE.Vector3(1, y, 0)).sub(bombCenter);
+  var projZ = bomb.localToWorld(new THREE.Vector3(0, y, 1)).sub(bombCenter);
+  var lenX = (vec.clone().projectOnVector(projX).length() <= minLen);
+  var lenZ = (vec.clone().projectOnVector(projZ).length() <= minLen);
+  var lenY = (vec.clone().projectOnVector(projZ).length() <= minLenY);
+  if(lenX && lenY && lenZ){
     scene.remove(abm);
     return true;
   }
-  //else if()
+
   for(var i = 0; i < balloon.length; i++){
     if(balloon[i].pos.clone().sub(bombHead).length() < balloon[i].r){
       scene.remove(balloon[i].mesh);
@@ -472,17 +485,18 @@ function animate() {
     bomb.time -= dt * 5;
     bomb.mesh.material.opacity = bomb.time <= 0 ? 0 : (0.6 * bomb.time / disappearTime);
     if(bomb.hit) building.material.opacity = bomb.time <= 0 ? 0 : (0.6 * bomb.time / disappearTime);
-    if(bomb.time <= -5){
+    if(bomb.time < -5){
       bomb.disappear = false;
       abm.fly = false;
       if(bomb.hit) scene.remove(building);
       scene.remove(fire);
     }
-/*
-    if(bomb.time < 5){
-      fire.geometry.scale(0.5, 0.5, 0.5);
+
+    if(bomb.time < 8){
+      var sca = (bomb.time + 5) / 13;
+      fire.geometry.scale(sca, sca, sca);
     }
-*/
+
     fireMaterial.uniforms['time'].value = .00025 * (Date.now() - start);
 
   }
