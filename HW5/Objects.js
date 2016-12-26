@@ -214,6 +214,7 @@ var ABM = function(){
   this.p0;
   this.p1;
   this.p2;
+  this.rotationMinR = 500;
 }
 
 ABM.prototype = Object.assign(Object.create(THREE.Object3D.prototype), {
@@ -261,11 +262,8 @@ ABM.prototype = Object.assign(Object.create(THREE.Object3D.prototype), {
       var c = q1.clone().add(v1.clone().multiplyScalar(s));
       var r = c.clone().sub(this.p0).length();
 
-
-      if(r <= 100){
-        var multi = (100 - r) / 100;
-        
-
+      if(r <= this.rotationMinR){
+        var multi = (this.rotationMinR - r) / this.rotationMinR;
         return multi * Math.PI * 0.5;
       }
     }

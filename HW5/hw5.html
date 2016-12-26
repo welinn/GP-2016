@@ -310,6 +310,7 @@ function init() {
   scene.add(camera);
 
   abmCamera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 10000);
+  scene.add(abmCamera);
 
   renderer = new THREE.WebGLRenderer();
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -377,15 +378,6 @@ function init() {
   yaw.onChange(function(value) {
     car.rotation.z = -value;
   });
-
-/*
-  var test = new THREE.Mesh(
-    new THREE.SphereGeometry( 1, 32, 32 ),
-    new THREE.MeshBasicMaterial( {color: 0xff0000} )
-  );
-test.position.set(0, 0, 24);
-scene.add(test);
-*/
 
   fireMaterial = new THREE.ShaderMaterial( {
     uniforms: { 
@@ -509,19 +501,17 @@ function animate() {
   controls.update();
   requestAnimationFrame(animate);
   render();
-
 }
 
 function render(){
   renderer.clear();
   renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
   renderer.setScissor(0, 0, window.innerWidth, window.innerHeight);
-  renderer.render(scene, camera);
+  renderer.render(scene, camera, null, true);
 
   if(abm.fly){
     var abmWidth = window.innerHeight * 0.4;
-    abmCamera.position.copy(
-      abm.position.clone().add(abm.localToWorld(new THREE.Vector3(0, 0, -abm.halfLen - 20))));
+    abmCamera.position.copy(abm.localToWorld(new THREE.Vector3(0, 30, -abm.halfLen -20)));
     abmCamera.lookAt(abm.position);
     renderer.setViewport(window.innerWidth - abmWidth, 0, abmWidth, abmWidth);
     renderer.setScissor(window.innerWidth - abmWidth, 0, abmWidth, abmWidth);
