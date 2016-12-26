@@ -232,7 +232,7 @@ ABM.prototype = Object.assign(Object.create(THREE.Object3D.prototype), {
       this.vel.setLength(this.maxSpeed);
     this.position.add(this.vel.clone().multiplyScalar(dt));
 
-
+	
     var oldZ = this.rotation.z;
 
     this.p2 = this.p1;
