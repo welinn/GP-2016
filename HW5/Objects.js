@@ -211,10 +211,14 @@ var ABM = function(){
   this.maxSpeed = 80;
   this.maxForce = 80;
   this.rotation.reorder('YXZ');
+  this.p0;
+  this.p1;
+  this.p2;
 }
 
 ABM.prototype = Object.assign(Object.create(THREE.Object3D.prototype), {
   constructor: ABM,
+
   update: function(dt, headPos, bomb){
 
     this.force = bomb.posNdtVel.clone().sub(this.position).setLength(this.maxForce).sub(this.vel);
@@ -227,29 +231,46 @@ ABM.prototype = Object.assign(Object.create(THREE.Object3D.prototype), {
       this.vel.setLength(this.maxSpeed);
     this.position.add(this.vel.clone().multiplyScalar(dt));
 
+    this.p2 = this.p1;
+    this.p1 = this.p0;
+    this.p0 = this.position.clone();
 
     var abmCenter = this.localToWorld(new THREE.Vector3());
-/*
-    var localDir = this.localToWorld(new THREE.Vector3(0, 0, 1)).sub(abmCenter).normalize();
-    var newDir = bomb.posNdtVel.clone().sub(abmCenter).normalize();
-    var angle = localDir.angleTo(newDir);
-    var axis = localDir.clone().cross(newDir).normalize();
-    this.rotateOnAxis (axis, angle);
-    this.rotation.z = 0;*/
-
-
-    //var axisX = this.localToWorld(new THREE.Vector3(1, 0, 0)).sub(abmCenter).normalize();
     var axisX = this.localToWorld(new THREE.Vector3(0, 0, 1)).clone().cross(this.vel).normalize();
     var axisZ = this.vel.clone().normalize();
     var axisY = axisX.clone().cross(axisZ);
     var m = new THREE.Matrix4();
     m.makeBasis(axisX, axisY, axisZ);
-
     this.rotation.setFromRotationMatrix(m);
-    this.rotation.z = 0; 
+    this.rotation.z = this.rolling();
+  },
 
-  }
+  rolling: function(){
 
+    if(this.p2 !== undefined){
+
+      var q0 = this.p0.clone().add(this.p1).divideScalar(2);
+      var q1 = this.p1.clone().add(this.p2).divideScalar(2);
+      var p0p1 = this.p0.clone().sub(this.p1);
+      var p1p2 = this.p1.clone().sub(this.p2);
+      var n = p0p1.clone().cross(p1p2);
+      var v0 = n.clone().cross(p0p1);
+      var v1 = n.clone().cross(p1p2);
+      var q1q0 = q1.clone().sub(q0);
+      var s = -p0p1.clone().dot(q1q0) / p0p1.clone().dot(v1);
+      var c = q1.clone().add(v1.clone().multiplyScalar(s));
+      var r = c.clone().sub(this.p0).length();
+
+
+      if(r <= 100){
+        var multi = (100 - r) / 100;
+        
+
+        return multi * Math.PI * 0.5;
+      }
+    }
+    return 0;
+  },
 
 });
 

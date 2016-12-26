@@ -267,7 +267,7 @@ void main() {
 
 <script>
 
-var camera, scene, renderer, controls;
+var camera, abmCamera, scene, renderer, controls;
 var planeLen = 400;
 
 var bomb, halfWidth = 6, bodyLen = 33, headLen = 8, seekDist = 100;
@@ -305,12 +305,18 @@ animate();
 
 function init() {
   scene = new THREE.Scene();
-  camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 1000);
+  camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 10000);
   camera.position.set(0, 300, 400);
   scene.add(camera);
+
+  abmCamera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 10000);
+
   renderer = new THREE.WebGLRenderer();
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setClearColor(0x888888);
+  renderer.setScissorTest(true);
+  renderer.autoClear = false;
+
   controls = new THREE.OrbitControls(camera, renderer.domElement);
   document.body.appendChild(renderer.domElement);
   window.addEventListener('resize', onWindowResize, false);
@@ -448,6 +454,7 @@ function collisionCheck(bombHead, points, balloon){
   var lenY = (vec.clone().projectOnVector(projZ).length() <= minLenY);
   if(lenX && lenY && lenZ){
     scene.remove(abm);
+    abm.fly = false;
     return true;
   }
 
@@ -487,7 +494,6 @@ function animate() {
     if(bomb.hit) building.material.opacity = bomb.time <= 0 ? 0 : (0.6 * bomb.time / disappearTime);
     if(bomb.time < -5){
       bomb.disappear = false;
-      abm.fly = false;
       if(bomb.hit) scene.remove(building);
       scene.remove(fire);
     }
@@ -502,9 +508,27 @@ function animate() {
   }
   controls.update();
   requestAnimationFrame(animate);
-  renderer.render(scene, camera);
+  render();
 
 }
+
+function render(){
+  renderer.clear();
+  renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
+  renderer.setScissor(0, 0, window.innerWidth, window.innerHeight);
+  renderer.render(scene, camera);
+
+  if(abm.fly){
+    var abmWidth = window.innerHeight * 0.4;
+    abmCamera.position.copy(
+      abm.position.clone().add(abm.localToWorld(new THREE.Vector3(0, 0, -abm.halfLen - 20))));
+    abmCamera.lookAt(abm.position);
+    renderer.setViewport(window.innerWidth - abmWidth, 0, abmWidth, abmWidth);
+    renderer.setScissor(window.innerWidth - abmWidth, 0, abmWidth, abmWidth);
+    renderer.render(scene, abmCamera);
+  }
+}
+
 </script>
 </body>
 </html>
