@@ -214,7 +214,7 @@ var ABM = function(){
   this.p0;
   this.p1;
   this.p2;
-  this.rotationMinR = 500;
+  this.rotationMinR = 250;
 }
 
 ABM.prototype = Object.assign(Object.create(THREE.Object3D.prototype), {
@@ -232,6 +232,9 @@ ABM.prototype = Object.assign(Object.create(THREE.Object3D.prototype), {
       this.vel.setLength(this.maxSpeed);
     this.position.add(this.vel.clone().multiplyScalar(dt));
 
+
+    var oldZ = this.rotation.z;
+
     this.p2 = this.p1;
     this.p1 = this.p0;
     this.p0 = this.position.clone();
@@ -243,10 +246,10 @@ ABM.prototype = Object.assign(Object.create(THREE.Object3D.prototype), {
     var m = new THREE.Matrix4();
     m.makeBasis(axisX, axisY, axisZ);
     this.rotation.setFromRotationMatrix(m);
-    this.rotation.z = this.rolling();
+    this.rotation.z = this.rolling(oldZ);
   },
 
-  rolling: function(){
+  rolling: function(oldZ){
 
     if(this.p2 !== undefined){
 
@@ -267,7 +270,7 @@ ABM.prototype = Object.assign(Object.create(THREE.Object3D.prototype), {
         return multi * Math.PI * 0.5;
       }
     }
-    return 0;
+    return oldZ;
   },
 
 });
