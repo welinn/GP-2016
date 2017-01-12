@@ -102,7 +102,6 @@ function ik_ccd (target, theta)
 		}
 	}
 	
-	
 	if (iter < MAXITER)
 		return 1;
 	else {
