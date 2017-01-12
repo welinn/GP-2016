@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<title>HW6 Inverse Kinematics</title>
+<style>
+body {
+  background-color: #fff;
+  color: #111;
+  margin: 0px;
+  overflow: hidden;
+  font-family: Monospace;
+  font-size: 20px;
+}
+	
+#info {
+  position: absolute;
+  top: 0px;
+  width: 100%;
+  padding: 5px;
+  text-align: center;
+  color: #ffff00
+}
+
+a {
+  color: #00ffff
+}
+
+strong {
+  color: red
+}
+
+#container {
+  z-index: 0;
+  left: 0px;
+  top: 0px;
+  overflow: hidden;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+</style>
+</head>
+
+<body>
+<div id="info">
+  <button id="throw" style="width:20%">Throw</button>
+</div>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.5.1/dat.gui.min.js'></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r76/three.min.js"></script>
+<script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+<script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+<script src="hw6.js"></script>
+<script src="ccdbox.js"></script>
+<script>
+
+var scene, camera, renderer, controls;
+var gc;
+
+var lowerArm, upperArm, body, upperArm, lowerArm;
+var bodyRot; 
+var trashCan, trashCanHight = 30, trashCanR = 20;
+var clock = new THREE.Clock();
+var ball, ballP, ballV, ballF, ballR = 7;
+
+var ts;
+var lastPos = new THREE.Vector3();
+var keys = [
+  [0, [-40, 55, -10]],
+  [1, [-40, 55, 100]]
+];
+var T, tSave, status = 'none';
+
+var theta1 = 0, theta2 = 0;
+var theta3 = 0, theta4 = 0;
+var tsphere, target;
+
+var axes = [], joints = [];
+var animated = false;
+
+$("#throw").click(function() {
+  ts = clock.getElapsedTime();
+  tsphere.material.visible = true;
+  update.release = false;
+  animated = true;
+  if(status === 'in'){
+    T = tSave;
+  }
+  else if(status === 'far'){
+    tSave += 0.1;
+    gc.cycle_time = tSave;
+    T = tSave;
+  }
+  else if(status === 'near'){
+    tSave -= 0.1;
+    gc.cycle_time = tSave;
+    T = tSave;
+  }
+  else{
+    tSave = T;
+  }
+});
+
+init();
+animate();
+
+function init() {
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 10000);
+  camera.position.set(0, 300, 400);
+  scene.add(camera);
+
+  renderer = new THREE.WebGLRenderer();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x888888);
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  document.body.appendChild(renderer.domElement);
+  window.addEventListener('resize', onWindowResize, false);
+  
+  var gridXZ = new THREE.GridHelper(200, 10);
+  gridXZ.setColors(new THREE.Color(0xff0000), new THREE.Color(0xffffff));
+  scene.add(gridXZ);
+
+  var gui = new dat.GUI();
+  initGc();
+  var cycle = gui.add(gc, 'cycle_time', 1e-3, 2).listen();
+  cycle.onChange(function(value) {
+    status = 'none';
+    T = value;
+  });
+
+  /////////////////////////////////////////////////////////////////////////
+
+  body = new THREE.Object3D();
+  var boxGeometry = new THREE.BoxGeometry(50, 100, 30);
+  var material = new THREE.MeshNormalMaterial();
+  var bodyMesh = new THREE.Mesh(boxGeometry, material);
+  bodyMesh.position.set(0, 50, 0);
+  body.add(bodyMesh);
+
+  body.position.set(25, 0, 0);
+
+  var boxGeometry = new THREE.BoxGeometry(10, 40, 10);
+  var arm = new THREE.Mesh(boxGeometry, material);
+  upperArm = new THREE.Object3D();
+  upperArm.add(arm);
+  arm.position.set(-5, -20, 0);
+  body.add(upperArm);
+  upperArm.position.set(-25, 100, 0);
+
+  boxGeometry = new THREE.BoxGeometry(10, 40, 10);
+  arm2 = new THREE.Mesh(boxGeometry, material);
+  lowerArm = new THREE.Object3D();
+  lowerArm.position.set(0, -40, 0);
+  upperArm.add(lowerArm);
+  lowerArm.add(arm2);
+  arm2.position.set(-5, -20, 0);
+
+//  scene.add(body);
+
+  bodyRot = new THREE.Object3D();
+  bodyRot.add(body);
+  bodyRot.position.set(-25, 0, -15);
+  scene.add(bodyRot);
+
+  trashCan = new THREE.Object3D();
+  var cylinder = new THREE.Mesh(
+    new THREE.CylinderGeometry(trashCanR, trashCanR, trashCanHight, 32, null, true),
+    new THREE.MeshNormalMaterial({side: THREE.DoubleSide})
+    );
+  cylinder.position.set(0, trashCanHight * 0.5, 0);
+  trashCan.add(cylinder);
+  trashCan.position.set(-40, 0, 100);
+  scene.add(trashCan);
+
+  tsphere = new THREE.Mesh(new THREE.BoxGeometry(ballR, ballR, ballR), new THREE.MeshBasicMaterial({
+    wireframe: true
+  }));
+  scene.add(tsphere);
+
+  target = new THREE.Vector3();
+  target.set(-40, 55, -10);
+  setarm();
+  for (var i = 0; i < 3; i++)
+    joints[i] = new THREE.Vector3();
+
+  ball = new THREE.Mesh(new THREE.SphereGeometry(ballR), new THREE.MeshNormalMaterial({
+    wireframe: true
+  }));
+  scene.add(ball);
+  ballP = new THREE.Vector3();
+  ballV = new THREE.Vector3();
+  ballF = new THREE.Vector3(0, -120, 0);
+
+  update(clock.getDelta(), true);
+}
+
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function initGc(){
+  gc = {
+    cycle_time: 1.5,
+  };
+  T = 1.5;
+  tSave = 1.5;
+}
+
+function animate() {
+  var dt = clock.getDelta();
+  if(animated) update(dt);
+
+  requestAnimationFrame(animate);
+  controls.update();
+  render();
+}
+
+function update(dt, init) {
+
+  update.release = update.release === undefined ? false : update.release;
+
+  keyframeInterpolate(clock.getElapsedTime());
+  tsphere.position.copy(target);
+  ball.position.copy(tsphere.position);
+
+  // var theta = [theta1, theta2, theta3, theta4];
+  var theta = [0, 0, 0, -1e-2];
+
+  ik_ccd(target, theta);
+  theta1 = theta[0];
+  theta2 = theta[1];
+  theta3 = theta[2];
+  theta4 = theta[3];
+
+  //////////////////////////////////////////////////////////
+  if (!update.release && ball.position.z > 30) { // release
+    ballP.copy(ball.position);
+    // estimate release velocity
+    ballV.copy(ballP.clone().sub(lastPos).multiplyScalar(1 / dt));
+    update.release = true;
+    tsphere.material.visible = false;
+  } else {
+    lastPos.copy(ball.position);
+  }
+
+  if (update.release) {
+
+    ballV.add(ballF.clone().multiplyScalar(dt));
+    if(checkBall()){
+      ballV.add(ballF);
+    }
+    ballP.add(ballV.clone().multiplyScalar(dt));
+    ball.position.copy(ballP);
+  }
+
+  if (ballP.y < ballR) {
+    ballP.y = ballR;
+    ballV.setLength(0);
+    animated = false;
+
+    if(!init){
+      var tmp = ballP.clone();
+      tmp.y = 0;
+      var dist = tmp.clone().sub(trashCan.position).length();
+
+      if(dist < trashCanR){
+        status = 'in';
+      }
+      else if(ball.position.z < trashCan.position.z){
+        status = 'near';
+      }
+      else{
+        status = 'far';
+      }
+    }
+  }
+}
+
+function checkBall(){
+
+  var tmp = ballP.clone();
+  tmp.y = 0;
+  var dist = tmp.clone().sub(trashCan.position).length();
+
+  if(ballP.y < trashCanHight + ballR){
+
+
+    if(dist < trashCanR - ballR - 0.1){  //in
+      return false;
+    }
+    else if(dist > trashCanR + ballR + 0.1){ //out
+      return false;
+    }
+    else if(Math.abs(dist - ballR) <= 0.1){  //hit wall
+      ballV.setLength(0);
+      return true;
+    }
+    else{  //撞在垃圾桶上緣
+      var force;
+      if(ballP.z < trashCan.position.z){
+        force = new THREE.Vector3(-40, trashCanHight, trashCan.position.z - trashCanR);
+
+      }
+      else{
+        force = new THREE.Vector3(-40, trashCanHight, trashCan.position.z + trashCanR);
+      }
+      force.sub(ballP).setLength(-ballV.clone().length() * 0.5);
+      ballV.copy(force);
+      return true;
+    }
+
+  }
+
+}
+
+function render() {
+  upperArm.rotation.z = theta1; //-Math.PI/6;//theta1;
+  upperArm.rotation.x = theta2; //-Math.PI/3;//theta2;
+  upperArm.rotation.y = theta3; //-Math.PI/3;//theta2;
+  upperArm.rotation.order = 'ZXY';
+
+  lowerArm.rotation.x = theta4; //-Math.PI/4;//theta3;
+
+  renderer.render(scene, camera);
+}
+
+</script>
+</body>
+</html>
