@@ -62,7 +62,8 @@ var lowerArm, upperArm, body, upperArm, lowerArm;
 var bodyRot; 
 var trashCan, trashCanHight = 30, trashCanR = 20;
 var clock = new THREE.Clock();
-var ball, ballP, ballV, ballF, ballR = 7;
+var ball, ballP, ballV, ballF, ballR = 7, ballArr = [];
+var time = 0;
 
 var ts;
 var lastPos = new THREE.Vector3();
@@ -84,6 +85,9 @@ $("#throw").click(function() {
   tsphere.material.visible = true;
   update.release = false;
   animated = true;
+  var len = ballArr.length;
+  for(var i = 0; i < len; i++) scene.remove(ballArr[i]);
+  ballArr = [];
   if(status === 'in'){
     T = tSave;
   }
@@ -279,6 +283,12 @@ function update(dt, init) {
       }
     }
   }
+  if(time > 0.2){
+    ballArr.push(ball.clone());
+    scene.add(ballArr[ballArr.length - 1]);
+    time = 0;
+  }
+  time += dt;
 }
 
 function checkBall(){
