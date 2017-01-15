@@ -255,9 +255,11 @@ function update(dt, init) {
   if (update.release) {
 
     ballV.add(ballF.clone().multiplyScalar(dt));
+    var air = ballV.clone().normalize().multiplyScalar(0.0001 * ballV.lengthSq());
     if(checkBall()){
       ballV.add(ballF);
     }
+    ballV.sub(air);
     ballP.add(ballV.clone().multiplyScalar(dt));
     ball.position.copy(ballP);
   }
